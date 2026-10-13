@@ -19,7 +19,7 @@ export function middleware(request: NextRequest) {
 
   if (!hasAuthCookie) {
     // Redirect to login if not authenticated
-    return NextResponse.redirect(new URL('/login', request.nextUrl));
+    return NextResponse.redirect(new URL('/clients/login', request.url));
   }
 
   return NextResponse.next();
