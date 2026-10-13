@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model Institution {
@@ -39,7 +38,7 @@ model Institution {
 
   subDistrict             String?
   district                String?
-  address                 String?
+  address                 String?   @db.Text
 
   // Arbitrary user-defined fields: { "<fieldKey>": "value", ... }
   customFields            Json      @default("{}")
@@ -83,10 +82,10 @@ model TargetedClient {
   email               String?
   district            String?
   subDistrict         String?
-  address             String?
+  address             String?  @db.Text
   priority            String   @default("Default") // "High" | "Default" | "Low"
   isArchived          Boolean   @default(false)
-  notes               String?
+  notes               String?  @db.Text
 
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -109,7 +108,7 @@ model Employee {
   designation  String?
   phone        String?
   avatarColor  String?
-  avatarUrl    String?
+  avatarUrl    String?   @db.LongText
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
@@ -125,11 +124,11 @@ model Employee {
 model Task {
   id              String       @id @default(cuid())
   title           String
-  description     String?
+  description     String?      @db.Text
   dueDate         DateTime
   status          String       @default("To Do") // "To Do" | "In Progress" | "In Review" | "Completed" | "Canceled"
   priority        String       @default("Medium")  // "Urgent" | "High" | "Medium" | "Low"
-  completionNote  String?
+  completionNote  String?      @db.Text
   progress        Int          @default(0)
   isMonthly       Boolean      @default(false)
   monthlyRecurringDay Int?
@@ -195,7 +194,7 @@ model Software {
   name         String   @unique
   code         String?
   category     String?  // Desktop App | Web App | SaaS | Mobile App
-  description  String?
+  description  String?  @db.Text
   defaultPrice Float?
   status       String   @default("Active") // Active | Inactive
 
@@ -217,11 +216,11 @@ model Company {
   designation       String?
   phone             String?
   email             String?
-  address           String?
+  address           String?  @db.Text
   district          String?
   subDistrict       String?
   website           String?
-  notes             String?
+  notes             String?  @db.Text
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -247,7 +246,7 @@ model CompanySubscription {
   startDate        DateTime?
   expireDate       DateTime?
   actualExpireDate DateTime?
-  notes            String?
+  notes            String?   @db.Text
 
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
