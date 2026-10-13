@@ -39,14 +39,14 @@ npm run dev        # http://localhost:3000
 ### ধাপ ১ — কোড GitHub-এ তোলা
 
 1. [github.com](https://github.com) -এ ফ্রি অ্যাকাউন্ট বানাও (না থাকলে)।
-2. একটি নতুন খালি রিপোজিটরি বানাও (যেমন `client-registry`) — Public বা Private, দুটোই ফ্রি।
+2. একটি নতুন খালি রিপোজিটরি বানাও (যেমন `Imp-database`) — Public বা Private, দুটোই ফ্রি।
 3. এই ফোল্ডারের ভেতরে গিয়ে:
    ```bash
    git init
    git add .
    git commit -m "Initial commit"
    git branch -M main
-   git remote add origin https://github.com/<তোমার-ইউজারনেম>/client-registry.git
+   git remote add origin https://github.com/hisam84/Imp-database.git
    git push -u origin main
    ```
 
@@ -54,7 +54,7 @@ npm run dev        # http://localhost:3000
 
 1. [vercel.com](https://vercel.com) -এ **GitHub দিয়ে সাইন আপ** করো (এটি অটোমেটিক্যালি Hobby/ফ্রি প্ল্যানে শুরু হয় — কোনো কার্ড লাগে না)।
 2. **Add New → Project** ক্লিক করো।
-3. তোমার `client-registry` রিপোজিটরি সিলেক্ট করে **Import** করো।
+3. তোমার `Imp-database` রিপোজিটরি সিলেক্ট করে **Import** করো।
 4. Framework Preset অটোমেটিক্যালি "Next.js" ধরবে। এখনই Deploy চাপবে না — আগে ধাপ ৩ করে নাও যাতে ডাটাবেজ ভ্যারিয়েবলসহ একবারেই বিল্ড হয়।
 
 ### ধাপ ৩ — ফ্রি Neon ডাটাবেজ যুক্ত করা
