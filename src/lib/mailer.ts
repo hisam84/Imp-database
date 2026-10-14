@@ -2,8 +2,10 @@ import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { MailServiceSettings, DEFAULT_MAIL_SETTINGS } from "@/lib/mailTypes";
 import { formatDhakaDateTime } from "@/lib/dateUtils";
+import { getSmtpConfig, createSmtpTransporter } from "@/lib/smtpService";
+import { SmtpConfig, DEFAULT_SMTP_CONFIG } from "@/lib/smtpTypes";
 
-export { type MailServiceSettings, DEFAULT_MAIL_SETTINGS };
+export { type MailServiceSettings, DEFAULT_MAIL_SETTINGS, type SmtpConfig, DEFAULT_SMTP_CONFIG };
 
 export async function getMailSettings(): Promise<MailServiceSettings> {
   try {
@@ -146,6 +148,42 @@ export async function sendEmail(payload: EmailPayload): Promise<{ success: boole
     const msg = "Mailer warning: No recipient email provided. Skipping email.";
     console.warn(msg);
     return { success: false, error: msg };
+  }
+
+  // 0. Check Super Admin custom SMTP configuration first
+  try {
+    const customSmtp = await getSmtpConfig();
+    if (customSmtp.isEnabled && customSmtp.host && customSmtp.user && customSmtp.pass) {
+      const customSenderName = fromName || customSmtp.fromName || "Imperial IT";
+      const customSenderEmail = customSmtp.fromEmail || customSmtp.user;
+      const customReplyTo = customSmtp.replyTo || customSenderEmail;
+
+      try {
+        const customTransporter = createSmtpTransporter(customSmtp);
+        await customTransporter.sendMail({
+          from: `"${customSenderName}" <${customSenderEmail}>`,
+          replyTo: customReplyTo,
+          to: toName ? `"${toName}" <${to}>` : to,
+          ...(cc && cc.length > 0 ? { cc } : {}),
+          subject,
+          text,
+          html,
+        });
+
+        return { success: true };
+      } catch (customErr: any) {
+        console.warn("Custom SMTP delivery failed:", customErr?.message || customErr);
+        if (!customSmtp.useBrevoFallback) {
+          return {
+            success: false,
+            error: `Custom SMTP error: ${customErr?.message || "Failed to deliver via configured SMTP"}`,
+          };
+        }
+        console.log("Custom SMTP failed with fallback enabled; attempting Brevo delivery relay/API...");
+      }
+    }
+  } catch (confErr: any) {
+    console.warn("Error reading custom SMTP configuration:", confErr?.message || confErr);
   }
 
   const rawBrevoApiKey = process.env.BREVO_API_KEY || DEFAULT_BREVO_CONFIG.apiKey;
@@ -1227,11 +1265,410 @@ ${tasksUrl}
 
 Client Registry Management System (impdatabase.vercel.app)
   `.trim();
-
   return await sendEmail({
     to: recipientEmail,
     toName: recipientName,
     subject: `[COMPLETED] Task Completed: ${taskTitle}`,
+    text,
+    html,
+  });
+}
+
+export interface WebsiteExpiryAlertEmailData {
+  institutionName: string;
+  institutionNameBangla?: string | null;
+  domain?: string | null;
+  category?: string | null;
+  expireDate: Date | string;
+  daysRemaining: number;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  recipientEmail: string;
+  recipientName?: string;
+  adminEmailCopy?: string | null;
+}
+
+/**
+ * 6. Website / Institution Expiry Alert Email
+ * Strictly calculates based on scheduled expireDate (not actualExpireDate).
+ */
+export async function sendWebsiteExpiryAlertEmail(
+  data: WebsiteExpiryAlertEmailData
+): Promise<{ success: boolean; error?: string }> {
+  const {
+    institutionName,
+    institutionNameBangla,
+    domain,
+    category,
+    expireDate,
+    daysRemaining,
+    contactName,
+    contactPhone,
+    recipientEmail,
+    recipientName,
+    adminEmailCopy,
+  } = data;
+
+  if (!recipientEmail) {
+    return { success: false, error: "No recipient email address provided for website expiry alert." };
+  }
+
+  const formattedDate = formatDhakaDateTime(expireDate);
+  const displayName = institutionNameBangla
+    ? `${institutionName} (${institutionNameBangla})`
+    : institutionName;
+  const isWebsite = (category || "").toLowerCase() !== "software";
+  const itemType = isWebsite ? "Website License" : "Software License";
+
+  const ccList: string[] = [];
+  if (adminEmailCopy && adminEmailCopy.trim().toLowerCase() !== recipientEmail.toLowerCase()) {
+    ccList.push(adminEmailCopy.trim());
+  }
+
+  const urgencyColor = daysRemaining <= 7 ? "#DC2626" : daysRemaining <= 15 ? "#EA580C" : "#0284C7";
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${itemType} Expiry Notice</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .cell-content { padding: 20px 14px !important; }
+      .stack-td { display: block !important; width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc;">
+    <tr>
+      <td align="center" style="padding: 24px 12px;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #CBD5E1; overflow: hidden; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color: ${urgencyColor}; padding: 22px 24px; text-align: center;">
+              <div style="display: inline-block; background-color: rgba(255,255,255,0.2); color: #ffffff; font-size: 11px; font-weight: bold; padding: 3px 12px; border-radius: 12px; margin-bottom: 8px; letter-spacing: 0.5px;">
+                🔔 EXPIRATION NOTICE
+              </div>
+              <h1 style="margin: 0; font-size: 19px; font-weight: 700; color: #ffffff;">
+                ${itemType} Expiring in ${daysRemaining} Days
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="cell-content" style="padding: 26px 24px;">
+              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${recipientName || "Valued Client"}</strong>,</p>
+              
+              <div style="background-color: #F8FAFC; border-left: 4px solid ${urgencyColor}; padding: 14px 16px; border-radius: 6px; margin-bottom: 22px;">
+                <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0F172A;">
+                  ⚠️ Your ${itemType.toLowerCase()} for <strong>${institutionName}</strong> is scheduled to expire soon.
+                </p>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748B;">
+                  Scheduled Expiry Date: <strong>${formattedDate}</strong> (${daysRemaining} days remaining).
+                </p>
+              </div>
+
+              <!-- Details Table -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 140px; color: #64748B;">Institution:</td>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #0F172A;">${displayName}</td>
+                      </tr>
+                      ${
+                        domain
+                          ? `
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Website Domain:</td>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: 600; color: #0284C7;">
+                          <a href="https://${domain.replace(/^https?:\/\//, "")}" target="_blank" style="color: #0284C7; text-decoration: underline;">
+                            ${domain}
+                          </a>
+                        </td>
+                      </tr>
+                      `
+                          : ""
+                      }
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Category:</td>
+                        <td class="stack-td" style="padding: 6px 0; color: #334155;">${category || "Website"}</td>
+                      </tr>
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Scheduled Expiry:</td>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: ${urgencyColor};">${formattedDate}</td>
+                      </tr>
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Time Remaining:</td>
+                        <td class="stack-td" style="padding: 6px 0;">
+                          <span style="background-color: ${urgencyColor}; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
+                            ${daysRemaining} Days Remaining
+                          </span>
+                        </td>
+                      </tr>
+                      ${
+                        contactName
+                          ? `
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Contact Person:</td>
+                        <td class="stack-td" style="padding: 6px 0; color: #334155;">${contactName} ${contactPhone ? `(${contactPhone})` : ""}</td>
+                      </tr>
+                      `
+                          : ""
+                      }
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Notice Box -->
+              <p style="font-size: 13px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+                To ensure uninterrupted service and prevent automatic suspension or domain deactivation, please renew your subscription or contact our administrative team before <strong>${formattedDate}</strong>.
+              </p>
+
+              <!-- Footer note -->
+              <p style="font-size: 11px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
+                Client Registry Management System &middot; This automated notice is calculated based on scheduled license expiration.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 14px; text-align: center; font-size: 12px; color: #475569; border-top: 1px solid #E2E8F0;">
+              Imperial IT &middot; Client Registry &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #0284C7; text-decoration: underline;">impdatabase.vercel.app</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const text = `
+${itemType.toUpperCase()} EXPIRATION NOTICE: ${institutionName}
+
+Hello ${recipientName || "Valued Client"},
+
+Your ${itemType.toLowerCase()} for ${institutionName} (${domain || ""}) is scheduled to expire in ${daysRemaining} days on ${formattedDate}.
+
+Institution: ${displayName}
+Domain: ${domain || "N/A"}
+Scheduled Expiry: ${formattedDate}
+Time Remaining: ${daysRemaining} days
+
+Please contact us or renew your license to avoid service disruption.
+
+Client Registry Management System (impdatabase.vercel.app)
+  `.trim();
+
+  return await sendEmail({
+    to: recipientEmail,
+    toName: recipientName,
+    ...(ccList.length > 0 ? { cc: ccList } : {}),
+    subject: `[EXPIRY NOTICE] ${itemType}: ${domain || institutionName} (${daysRemaining} Days Remaining)`,
+    text,
+    html,
+  });
+}
+
+export interface CompanySubscriptionExpiryAlertEmailData {
+  companyName: string;
+  companyNameBangla?: string | null;
+  softwareName: string;
+  billingCycle: string;
+  expireDate: Date | string;
+  daysRemaining: number;
+  contactPerson?: string | null;
+  contactPhone?: string | null;
+  recipientEmail: string;
+  recipientName?: string;
+  adminEmailCopy?: string | null;
+}
+
+/**
+ * 7. Company Software Subscription Expiry Alert Email
+ */
+export async function sendCompanySubscriptionExpiryAlertEmail(
+  data: CompanySubscriptionExpiryAlertEmailData
+): Promise<{ success: boolean; error?: string }> {
+  const {
+    companyName,
+    companyNameBangla,
+    softwareName,
+    billingCycle,
+    expireDate,
+    daysRemaining,
+    contactPerson,
+    recipientEmail,
+    recipientName,
+    adminEmailCopy,
+  } = data;
+
+  if (!recipientEmail) {
+    return { success: false, error: "No recipient email address provided for subscription expiry alert." };
+  }
+
+  const formattedDate = formatDhakaDateTime(expireDate);
+  const displayName = companyNameBangla ? `${companyName} (${companyNameBangla})` : companyName;
+
+  const ccList: string[] = [];
+  if (adminEmailCopy && adminEmailCopy.trim().toLowerCase() !== recipientEmail.toLowerCase()) {
+    ccList.push(adminEmailCopy.trim());
+  }
+
+  const urgencyColor = daysRemaining <= 7 ? "#DC2626" : daysRemaining <= 15 ? "#EA580C" : "#7C3AED";
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Software Subscription Expiry Notice</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .cell-content { padding: 20px 14px !important; }
+      .stack-td { display: block !important; width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc;">
+    <tr>
+      <td align="center" style="padding: 24px 12px;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #CBD5E1; overflow: hidden; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color: ${urgencyColor}; padding: 22px 24px; text-align: center;">
+              <div style="display: inline-block; background-color: rgba(255,255,255,0.2); color: #ffffff; font-size: 11px; font-weight: bold; padding: 3px 12px; border-radius: 12px; margin-bottom: 8px; letter-spacing: 0.5px;">
+                🔄 SUBSCRIPTION RENEWAL NOTICE
+              </div>
+              <h1 style="margin: 0; font-size: 19px; font-weight: 700; color: #ffffff;">
+                ${softwareName} Subscription Expiring in ${daysRemaining} Days
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="cell-content" style="padding: 26px 24px;">
+              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${recipientName || contactPerson || "Valued Customer"}</strong>,</p>
+              
+              <div style="background-color: #F8FAFC; border-left: 4px solid ${urgencyColor}; padding: 14px 16px; border-radius: 6px; margin-bottom: 22px;">
+                <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0F172A;">
+                  Your software subscription for <strong>${softwareName}</strong> is approaching its renewal date.
+                </p>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748B;">
+                  Scheduled Expiry: <strong>${formattedDate}</strong> (${daysRemaining} days remaining).
+                </p>
+              </div>
+
+              <!-- Details Table -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 140px; color: #64748B;">Company:</td>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #0F172A;">${displayName}</td>
+                      </tr>
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Software Product:</td>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #7C3AED;">${softwareName}</td>
+                      </tr>
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Billing Cycle:</td>
+                        <td class="stack-td" style="padding: 6px 0; color: #334155;">${billingCycle}</td>
+                      </tr>
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Expiry Date:</td>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: ${urgencyColor};">${formattedDate}</td>
+                      </tr>
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Days Remaining:</td>
+                        <td class="stack-td" style="padding: 6px 0;">
+                          <span style="background-color: ${urgencyColor}; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
+                            ${daysRemaining} Days
+                          </span>
+                        </td>
+                      </tr>
+                      ${
+                        contactPerson
+                          ? `
+                      <tr>
+                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Contact Person:</td>
+                        <td class="stack-td" style="padding: 6px 0; color: #334155;">${contactPerson}</td>
+                      </tr>
+                      `
+                          : ""
+                      }
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Notice Box -->
+              <p style="font-size: 13px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+                Please ensure timely renewal before <strong>${formattedDate}</strong> to avoid any interruption in software operations or service license deactivation.
+              </p>
+
+              <p style="font-size: 11px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
+                Client Registry Management System &middot; Automated Software Subscription Notification
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F1F5F9; padding: 14px; text-align: center; font-size: 12px; color: #475569; border-top: 1px solid #E2E8F0;">
+              Imperial IT &middot; Client Registry &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #7C3AED; text-decoration: underline;">impdatabase.vercel.app</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const text = `
+SUBSCRIPTION RENEWAL NOTICE: ${softwareName} for ${companyName}
+
+Hello ${recipientName || contactPerson || "Valued Customer"},
+
+Your subscription for ${softwareName} is scheduled to expire in ${daysRemaining} days on ${formattedDate}.
+
+Company: ${displayName}
+Product: ${softwareName}
+Billing Cycle: ${billingCycle}
+Expiry Date: ${formattedDate}
+Days Remaining: ${daysRemaining} days
+
+Please contact us to renew your subscription.
+
+Client Registry Management System (impdatabase.vercel.app)
+  `.trim();
+
+  return await sendEmail({
+    to: recipientEmail,
+    toName: recipientName,
+    ...(ccList.length > 0 ? { cc: ccList } : {}),
+    subject: `[SUBSCRIPTION NOTICE] ${softwareName} Expiry Notice for ${companyName} (${daysRemaining} Days Remaining)`,
     text,
     html,
   });

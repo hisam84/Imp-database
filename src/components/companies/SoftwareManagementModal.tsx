@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Software, SOFTWARE_CATEGORY_OPTIONS } from "@/lib/types";
 
 interface SoftwareManagementModalProps {
@@ -20,6 +20,12 @@ export function SoftwareManagementModal({ onClose, onChanged }: SoftwareManageme
   const [description, setDescription] = useState("");
   const [defaultPrice, setDefaultPrice] = useState("");
   const [status, setStatus] = useState<"Active" | "Inactive">("Active");
+
+  // Refs for smooth scroll and focus
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const [isHighlighting, setIsHighlighting] = useState(false);
 
   async function fetchSoftwares() {
     setLoading(true);
@@ -61,6 +67,28 @@ export function SoftwareManagementModal({ onClose, onChanged }: SoftwareManageme
     setDescription(sw.description || "");
     setDefaultPrice(sw.defaultPrice !== undefined && sw.defaultPrice !== null ? String(sw.defaultPrice) : "");
     setStatus(sw.status || "Active");
+
+    // Smoothly scroll the container to the top edit form
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } else if (formRef.current) {
+      formRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+
+    // Trigger visual highlight pulse and focus input
+    setIsHighlighting(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 280);
+    setTimeout(() => {
+      setIsHighlighting(false);
+    }, 1200);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -147,7 +175,7 @@ export function SoftwareManagementModal({ onClose, onChanged }: SoftwareManageme
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div ref={scrollContainerRef} className="p-6 overflow-y-auto space-y-6 flex-1 scroll-smooth">
           {error && (
             <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium flex items-center justify-between">
               <span>⚠️ {error}</span>
@@ -156,16 +184,33 @@ export function SoftwareManagementModal({ onClose, onChanged }: SoftwareManageme
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-4 rounded-xl border border-blue-500/20 bg-blue-50/40 dark:bg-blue-950/20 space-y-4">
+          <form
+            ref={formRef}
+            onSubmit={handleSubmit}
+            className={`p-4 rounded-xl border transition-all duration-500 space-y-4 ${
+              isHighlighting
+                ? "border-blue-500 bg-blue-100/70 dark:bg-blue-900/40 ring-4 ring-blue-500/25 shadow-lg scale-[1.005]"
+                : editingItem
+                ? "border-blue-500/50 bg-blue-50/60 dark:bg-blue-950/30 ring-1 ring-blue-500/20 shadow-sm"
+                : "border-blue-500/20 bg-blue-50/40 dark:bg-blue-950/20"
+            }`}
+          >
             <div className="flex items-center justify-between border-b border-blue-500/10 pb-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                {editingItem ? `Edit: ${editingItem.name}` : "+ Add New Software Product"}
+              <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                {editingItem ? (
+                  <>
+                    <span>✏️</span>
+                    <span>Edit: {editingItem.name}</span>
+                  </>
+                ) : (
+                  <span>+ Add New Software Product</span>
+                )}
               </h3>
               {editingItem && (
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline"
+                  className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline font-medium"
                 >
                   Cancel Edit
                 </button>
@@ -178,6 +223,7 @@ export function SoftwareManagementModal({ onClose, onChanged }: SoftwareManageme
                   Software Name <span className="text-red-500">*</span>
                 </label>
                 <input
+                  ref={nameInputRef}
                   type="text"
                   required
                   placeholder="e.g. School Management System"

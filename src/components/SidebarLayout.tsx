@@ -275,7 +275,7 @@ export function SidebarLayout({
             ),
           },
           {
-            label: "Mail Settings",
+            label: "SMTP & Mail Settings",
             href: "/mail-settings",
             iconSvg: (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

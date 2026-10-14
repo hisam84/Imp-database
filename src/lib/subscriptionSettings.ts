@@ -1,10 +1,22 @@
 import { prisma } from "@/lib/prisma";
 
 export interface SubscriptionExpirySettings {
+  // Company Subscription Thresholds
   monthlyDays: number;     // e.g. 7 days for monthly
   halfYearlyDays: number;  // e.g. 15 days for half-yearly
   yearlyDays: number;      // e.g. 30 days for yearly
   defaultDays: number;     // e.g. 30 days fallback for custom/other
+
+  // Website & Institution Expiry Thresholds
+  websiteDays: number;     // e.g. 30 days before expireDate
+  softwareDays: number;    // e.g. 30 days for Institution category='Software'
+
+  // Automated Email Notification Settings
+  autoEmailEnabled: boolean;              // Master switch for automated expiry emails
+  websiteExpiryEmailEnabled: boolean;     // Automated emails for websites nearing expiry
+  companyExpiryEmailEnabled: boolean;     // Automated emails for company subscriptions nearing expiry
+  notifyAdminOnExpiry: boolean;           // Send copy/alert to Administrator
+  adminNotificationEmail?: string;        // Custom admin recipient email
 }
 
 export const DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS: SubscriptionExpirySettings = {
@@ -12,12 +24,21 @@ export const DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS: SubscriptionExpirySettings = 
   halfYearlyDays: 15,
   yearlyDays: 30,
   defaultDays: 30,
+
+  websiteDays: 30,
+  softwareDays: 30,
+
+  autoEmailEnabled: true,
+  websiteExpiryEmailEnabled: true,
+  companyExpiryEmailEnabled: true,
+  notifyAdminOnExpiry: true,
+  adminNotificationEmail: "imperialitbd2011@gmail.com",
 };
 
 export const SETTINGS_KEY = "subscription_expiry_settings";
 
 /**
- * Loads subscription expiry thresholds from persistent SiteSettings.
+ * Loads subscription and website expiry thresholds & email settings from persistent SiteSettings.
  */
 export async function getSubscriptionExpirySettings(): Promise<SubscriptionExpirySettings> {
   try {
@@ -32,6 +53,15 @@ export async function getSubscriptionExpirySettings(): Promise<SubscriptionExpir
         halfYearlyDays: typeof parsed.halfYearlyDays === "number" && parsed.halfYearlyDays >= 0 ? parsed.halfYearlyDays : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.halfYearlyDays,
         yearlyDays: typeof parsed.yearlyDays === "number" && parsed.yearlyDays >= 0 ? parsed.yearlyDays : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.yearlyDays,
         defaultDays: typeof parsed.defaultDays === "number" && parsed.defaultDays >= 0 ? parsed.defaultDays : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.defaultDays,
+
+        websiteDays: typeof parsed.websiteDays === "number" && parsed.websiteDays >= 0 ? parsed.websiteDays : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.websiteDays,
+        softwareDays: typeof parsed.softwareDays === "number" && parsed.softwareDays >= 0 ? parsed.softwareDays : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.softwareDays,
+
+        autoEmailEnabled: typeof parsed.autoEmailEnabled === "boolean" ? parsed.autoEmailEnabled : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.autoEmailEnabled,
+        websiteExpiryEmailEnabled: typeof parsed.websiteExpiryEmailEnabled === "boolean" ? parsed.websiteExpiryEmailEnabled : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.websiteExpiryEmailEnabled,
+        companyExpiryEmailEnabled: typeof parsed.companyExpiryEmailEnabled === "boolean" ? parsed.companyExpiryEmailEnabled : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.companyExpiryEmailEnabled,
+        notifyAdminOnExpiry: typeof parsed.notifyAdminOnExpiry === "boolean" ? parsed.notifyAdminOnExpiry : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.notifyAdminOnExpiry,
+        adminNotificationEmail: typeof parsed.adminNotificationEmail === "string" ? parsed.adminNotificationEmail : DEFAULT_SUBSCRIPTION_EXPIRY_SETTINGS.adminNotificationEmail,
       };
     }
   } catch (err: any) {
@@ -42,7 +72,7 @@ export async function getSubscriptionExpirySettings(): Promise<SubscriptionExpir
 }
 
 /**
- * Saves subscription expiry thresholds to SiteSettings.
+ * Saves subscription and website expiry thresholds & email settings to SiteSettings.
  */
 export async function saveSubscriptionExpirySettings(
   settings: Partial<SubscriptionExpirySettings>
@@ -53,6 +83,15 @@ export async function saveSubscriptionExpirySettings(
     halfYearlyDays: typeof settings.halfYearlyDays === "number" && settings.halfYearlyDays >= 0 ? Math.round(settings.halfYearlyDays) : current.halfYearlyDays,
     yearlyDays: typeof settings.yearlyDays === "number" && settings.yearlyDays >= 0 ? Math.round(settings.yearlyDays) : current.yearlyDays,
     defaultDays: typeof settings.defaultDays === "number" && settings.defaultDays >= 0 ? Math.round(settings.defaultDays) : current.defaultDays,
+
+    websiteDays: typeof settings.websiteDays === "number" && settings.websiteDays >= 0 ? Math.round(settings.websiteDays) : current.websiteDays,
+    softwareDays: typeof settings.softwareDays === "number" && settings.softwareDays >= 0 ? Math.round(settings.softwareDays) : current.softwareDays,
+
+    autoEmailEnabled: typeof settings.autoEmailEnabled === "boolean" ? settings.autoEmailEnabled : current.autoEmailEnabled,
+    websiteExpiryEmailEnabled: typeof settings.websiteExpiryEmailEnabled === "boolean" ? settings.websiteExpiryEmailEnabled : current.websiteExpiryEmailEnabled,
+    companyExpiryEmailEnabled: typeof settings.companyExpiryEmailEnabled === "boolean" ? settings.companyExpiryEmailEnabled : current.companyExpiryEmailEnabled,
+    notifyAdminOnExpiry: typeof settings.notifyAdminOnExpiry === "boolean" ? settings.notifyAdminOnExpiry : current.notifyAdminOnExpiry,
+    adminNotificationEmail: typeof settings.adminNotificationEmail === "string" ? settings.adminNotificationEmail : current.adminNotificationEmail,
   };
 
   try {
