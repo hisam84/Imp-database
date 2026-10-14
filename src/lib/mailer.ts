@@ -281,7 +281,7 @@ export async function sendEmail(payload: EmailPayload): Promise<{ success: boole
  * 1. smtp.appUrl (from database Mail Settings if configured)
  * 2. process.env.APP_URL
  * 3. process.env.NEXT_PUBLIC_APP_URL
- * 4. Fallback: "https://imperialitbd.com/database"
+ * 4. Fallback: "https://hisam.beepsystems.com.bd/database"
  */
 export async function getAppBaseUrl(): Promise<string> {
   try {
@@ -302,7 +302,7 @@ export async function getAppBaseUrl(): Promise<string> {
     return envUrl.endsWith("/database") ? envUrl : `${envUrl}/database`;
   }
 
-  return "https://imperialitbd.com/database";
+  return "https://hisam.beepsystems.com.bd/database";
 }
 
 export function getDisplayHost(url: string): string {
@@ -310,11 +310,11 @@ export function getDisplayHost(url: string): string {
     const parsed = new URL(url);
     return parsed.host;
   } catch {
-    return "imperialitbd.com";
+    return "hisam.beepsystems.com.bd";
   }
 }
 
-const defaultBaseUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://imperialitbd.com/database").replace(/\/$/, "");
+const defaultBaseUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://hisam.beepsystems.com.bd/database").replace(/\/$/, "");
 export const SITE_URL = defaultBaseUrl.endsWith("/database") ? defaultBaseUrl : `${defaultBaseUrl}/database`;
 export const loginUrl = `${SITE_URL}/login`;
 export const tasksUrl = `${SITE_URL}/tasks`;

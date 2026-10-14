@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "imperialitbd.com";
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "hisam.beepsystems.com.bd";
   const protocol = host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
   const redirectUri =
     process.env.GOOGLE_REDIRECT_URI ||

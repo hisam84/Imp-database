@@ -770,7 +770,7 @@ export default function MailSettingsPage() {
                   type="text"
                   value={smtpConfig.appUrl || ""}
                   onChange={(e) => setSmtpConfig({ ...smtpConfig, appUrl: e.target.value })}
-                  placeholder="e.g. https://yourdomain.com/database or http://123.45.67.89:3000/database"
+                  placeholder="https://hisam.beepsystems.com.bd/database"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-[10px] text-slate-400 dark:text-slate-500">

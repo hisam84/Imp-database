@@ -6,7 +6,7 @@ import XLSX from 'xlsx';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BASE_URL = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://imperialitbd.com/database').replace(/\/$/, '');
+const BASE_URL = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://hisam.beepsystems.com.bd/database').replace(/\/$/, '');
 const AUTH_COOKIE = 'site-auth=authenticated';
 
 const ENDPOINTS = [
