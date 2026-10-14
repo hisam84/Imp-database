@@ -2,7 +2,7 @@ process.env.TZ = "Asia/Dhaka";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: '/clients',
+  basePath: '/database',
   skipTrailingSlashRedirect: true,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
