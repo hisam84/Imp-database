@@ -26,9 +26,11 @@ function getOAuth2Client() {
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN?.trim();
 
   if (clientId && clientSecret && refreshToken) {
+    const defaultBase = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://imperialitbd.com/database").replace(/\/$/, "");
+    const normalizedBase = defaultBase.endsWith("/database") ? defaultBase : `${defaultBase}/database`;
     const redirectUri =
       process.env.GOOGLE_REDIRECT_URI ||
-      "https://impdatabase.vercel.app/api/drive/auth/callback";
+      `${normalizedBase}/api/drive/auth/callback`;
 
     const oauth2Client = new google.auth.OAuth2(
       clientId,

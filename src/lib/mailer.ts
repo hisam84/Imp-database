@@ -275,9 +275,49 @@ export async function sendEmail(payload: EmailPayload): Promise<{ success: boole
   return { success: false, error: noConfigMsg };
 }
 
-const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://impdatabase.vercel.app").replace(/\/$/, "");
-const loginUrl = `${SITE_URL}/login`;
-const tasksUrl = `${SITE_URL}/tasks`;
+/**
+ * Resolves the application base URL ensuring the Next.js basePath '/database' is included.
+ * Order of priority:
+ * 1. smtp.appUrl (from database Mail Settings if configured)
+ * 2. process.env.APP_URL
+ * 3. process.env.NEXT_PUBLIC_APP_URL
+ * 4. Fallback: "https://imperialitbd.com/database"
+ */
+export async function getAppBaseUrl(): Promise<string> {
+  try {
+    const smtp = await getSmtpConfig();
+    if (smtp?.appUrl && smtp.appUrl.trim()) {
+      let url = smtp.appUrl.trim().replace(/\/$/, "");
+      if (!url.endsWith("/database")) {
+        url = `${url}/database`;
+      }
+      return url;
+    }
+  } catch {
+    // fallback to env
+  }
+
+  const envUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+  if (envUrl) {
+    return envUrl.endsWith("/database") ? envUrl : `${envUrl}/database`;
+  }
+
+  return "https://imperialitbd.com/database";
+}
+
+export function getDisplayHost(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return parsed.host;
+  } catch {
+    return "imperialitbd.com";
+  }
+}
+
+const defaultBaseUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://imperialitbd.com/database").replace(/\/$/, "");
+export const SITE_URL = defaultBaseUrl.endsWith("/database") ? defaultBaseUrl : `${defaultBaseUrl}/database`;
+export const loginUrl = `${SITE_URL}/login`;
+export const tasksUrl = `${SITE_URL}/tasks`;
 
 /**
  * 1. Password Reset OTP Email (English Only, Responsive Blue Styling)
@@ -290,6 +330,9 @@ export async function sendOTPEmail(data: { email: string; otp: string }) {
     console.log("Password reset OTP email skipped: service disabled in Mail Settings.");
     return { success: false, error: "Password reset email service is currently disabled." };
   }
+
+  const appBaseUrl = await getAppBaseUrl();
+  const displayHost = getDisplayHost(appBaseUrl);
 
   const html = `
 <!DOCTYPE html>
@@ -334,7 +377,7 @@ export async function sendOTPEmail(data: { email: string; otp: string }) {
           </tr>
           <tr>
             <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #0D47A1; text-decoration: underline;">impdatabase.vercel.app</a>
+              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
             </td>
           </tr>
         </table>
@@ -352,7 +395,7 @@ Your one-time verification code (OTP) is: ${otp}
 
 This code is valid for 10 minutes. If you did not make this request, please ignore this message.
 
-Client Registry Management System (impdatabase.vercel.app)
+Client Registry Management System (${displayHost})
   `.trim();
 
   return sendEmail({
@@ -385,6 +428,10 @@ export async function sendTaskAssignmentEmail(data: TaskEmailData) {
   } = data;
 
   if (!assignedToEmail) return;
+
+  const appBaseUrl = await getAppBaseUrl();
+  const currentTasksUrl = `${appBaseUrl}/tasks`;
+  const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(dueDate);
 
@@ -490,7 +537,7 @@ export async function sendTaskAssignmentEmail(data: TaskEmailData) {
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${tasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
+                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
                       Open Task Dashboard
                     </a>
                   </td>
@@ -498,7 +545,7 @@ export async function sendTaskAssignmentEmail(data: TaskEmailData) {
               </table>
 
               <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Access URL: <a href="${tasksUrl}" style="color: #2196F3; text-decoration: underline;">${tasksUrl}</a>
+                Access URL: <a href="${currentTasksUrl}" style="color: #2196F3; text-decoration: underline;">${currentTasksUrl}</a>
               </p>
             </td>
           </tr>
@@ -506,7 +553,7 @@ export async function sendTaskAssignmentEmail(data: TaskEmailData) {
           <!-- Footer -->
           <tr>
             <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #0D47A1; text-decoration: underline;">impdatabase.vercel.app</a>
+              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
             </td>
           </tr>
         </table>
@@ -530,9 +577,9 @@ Due Date: ${formattedDate}
 Priority: ${priority}
 ${institutionName ? `Institution: ${institutionName}\n` : ""}${description ? `Description: ${description}\n` : ""}
 Open Task Dashboard:
-${tasksUrl}
+${currentTasksUrl}
 
-Client Registry Management System (impdatabase.vercel.app)
+Client Registry Management System (${displayHost})
   `.trim();
 
   return await sendEmail({
@@ -568,6 +615,10 @@ export async function sendTaskDueSoonEmail(data: TaskAlertEmailData) {
   if (!assignedToEmail) {
     return { success: false, error: "No recipient email address provided." };
   }
+
+  const appBaseUrl = await getAppBaseUrl();
+  const currentTasksUrl = `${appBaseUrl}/tasks`;
+  const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(dueDate);
 
@@ -666,7 +717,7 @@ export async function sendTaskDueSoonEmail(data: TaskAlertEmailData) {
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${tasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
+                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
                       Complete or Update Task
                     </a>
                   </td>
@@ -674,7 +725,7 @@ export async function sendTaskDueSoonEmail(data: TaskAlertEmailData) {
               </table>
 
               <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Direct link: <a href="${tasksUrl}" style="color: #2196F3; text-decoration: underline;">${tasksUrl}</a>
+                Direct link: <a href="${currentTasksUrl}" style="color: #2196F3; text-decoration: underline;">${currentTasksUrl}</a>
               </p>
             </td>
           </tr>
@@ -682,7 +733,7 @@ export async function sendTaskDueSoonEmail(data: TaskAlertEmailData) {
           <!-- Footer -->
           <tr>
             <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #0D47A1; text-decoration: underline;">impdatabase.vercel.app</a>
+              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
             </td>
           </tr>
         </table>
@@ -706,9 +757,9 @@ Priority: ${priority}
 Assigned By: ${assignedByText}
 ${institutionName ? `Institution: ${institutionName}\n` : ""}${description ? `Description: ${description}\n` : ""}
 View and update on Dashboard:
-${tasksUrl}
+${currentTasksUrl}
 
-Client Registry Management System (impdatabase.vercel.app)
+Client Registry Management System (${displayHost})
   `.trim();
 
   return await sendEmail({
@@ -744,6 +795,10 @@ export async function sendMonthlyTaskReminderEmail(data: TaskAlertEmailData): Pr
   if (!assignedToEmail) {
     return { success: false, error: "No recipient email address provided." };
   }
+
+  const appBaseUrl = await getAppBaseUrl();
+  const currentTasksUrl = `${appBaseUrl}/tasks`;
+  const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(dueDate);
   const assignedByText = assignedByName || "Administrator";
@@ -855,7 +910,7 @@ export async function sendMonthlyTaskReminderEmail(data: TaskAlertEmailData): Pr
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${tasksUrl}" target="_blank" style="background-color: #7C3AED; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(124, 58, 237, 0.3);">
+                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #7C3AED; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(124, 58, 237, 0.3);">
                       Open Tasks Dashboard
                     </a>
                   </td>
@@ -863,7 +918,7 @@ export async function sendMonthlyTaskReminderEmail(data: TaskAlertEmailData): Pr
               </table>
 
               <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Direct link: <a href="${tasksUrl}" style="color: #7C3AED; text-decoration: underline;">${tasksUrl}</a>
+                Direct link: <a href="${currentTasksUrl}" style="color: #7C3AED; text-decoration: underline;">${currentTasksUrl}</a>
               </p>
             </td>
           </tr>
@@ -871,7 +926,7 @@ export async function sendMonthlyTaskReminderEmail(data: TaskAlertEmailData): Pr
           <!-- Footer -->
           <tr>
             <td style="background-color: #F5F3FF; padding: 14px; text-align: center; font-size: 12px; color: #6D28D9; border-top: 1px solid #DDD6FE;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #6D28D9; text-decoration: underline;">impdatabase.vercel.app</a>
+              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #6D28D9; text-decoration: underline;">${displayHost}</a>
             </td>
           </tr>
         </table>
@@ -896,9 +951,9 @@ Priority: ${priority}
 Assigned By: ${assignedByText}
 ${institutionName ? `Institution: ${institutionName}\n` : ""}${description ? `Description: ${description}\n` : ""}
 View and update on Dashboard:
-${tasksUrl}
+${currentTasksUrl}
 
-Client Registry Management System (impdatabase.vercel.app)
+Client Registry Management System (${displayHost})
   `.trim();
 
   return await sendEmail({
@@ -939,6 +994,10 @@ export async function sendTaskOverdueEmail(data: TaskAlertEmailData): Promise<{ 
   if (!finalRecipientEmail) {
     return { success: false, error: "No recipient email address found for overdue task." };
   }
+
+  const appBaseUrl = await getAppBaseUrl();
+  const currentTasksUrl = `${appBaseUrl}/tasks`;
+  const displayHost = getDisplayHost(appBaseUrl);
 
   // CC list for overdue alert: ensure assigner and admin are notified
   const ccList: string[] = [];
@@ -1051,7 +1110,7 @@ export async function sendTaskOverdueEmail(data: TaskAlertEmailData): Promise<{ 
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${tasksUrl}" target="_blank" style="background-color: #DC2626; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(220, 38, 38, 0.3);">
+                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #DC2626; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(220, 38, 38, 0.3);">
                       Resolve Overdue Task
                     </a>
                   </td>
@@ -1059,7 +1118,7 @@ export async function sendTaskOverdueEmail(data: TaskAlertEmailData): Promise<{ 
               </table>
 
               <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Direct link: <a href="${tasksUrl}" style="color: #2196F3; text-decoration: underline;">${tasksUrl}</a>
+                Direct link: <a href="${currentTasksUrl}" style="color: #2196F3; text-decoration: underline;">${currentTasksUrl}</a>
               </p>
             </td>
           </tr>
@@ -1067,7 +1126,7 @@ export async function sendTaskOverdueEmail(data: TaskAlertEmailData): Promise<{ 
           <!-- Footer -->
           <tr>
             <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #0D47A1; text-decoration: underline;">impdatabase.vercel.app</a>
+              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
             </td>
           </tr>
         </table>
@@ -1091,9 +1150,9 @@ Priority: ${priority}
 Assigned By: ${assignedByText}
 ${institutionName ? `Institution: ${institutionName}\n` : ""}${description ? `Description: ${description}\n` : ""}
 Please resolve this task on your dashboard immediately:
-${tasksUrl}
+${currentTasksUrl}
 
-Client Registry Management System (impdatabase.vercel.app)
+Client Registry Management System (${displayHost})
   `.trim();
 
   return await sendEmail({
@@ -1129,6 +1188,10 @@ export async function sendTaskCompletionEmail(data: TaskCompletionEmailData) {
   } = data;
 
   if (!recipientEmail) return;
+
+  const appBaseUrl = await getAppBaseUrl();
+  const currentTasksUrl = `${appBaseUrl}/tasks`;
+  const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDueDate = formatDhakaDateTime(dueDate);
 
@@ -1221,7 +1284,7 @@ export async function sendTaskCompletionEmail(data: TaskCompletionEmailData) {
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${tasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
+                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
                       View on Dashboard
                     </a>
                   </td>
@@ -1229,7 +1292,7 @@ export async function sendTaskCompletionEmail(data: TaskCompletionEmailData) {
               </table>
 
               <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Direct link: <a href="${tasksUrl}" style="color: #2196F3; text-decoration: underline;">${tasksUrl}</a>
+                Direct link: <a href="${currentTasksUrl}" style="color: #2196F3; text-decoration: underline;">${currentTasksUrl}</a>
               </p>
             </td>
           </tr>
@@ -1237,7 +1300,7 @@ export async function sendTaskCompletionEmail(data: TaskCompletionEmailData) {
           <!-- Footer -->
           <tr>
             <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #0D47A1; text-decoration: underline;">impdatabase.vercel.app</a>
+              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
             </td>
           </tr>
         </table>
@@ -1261,9 +1324,9 @@ Completion Time: ${completionDate}
 Original Due Date: ${formattedDueDate}
 ${institutionName ? `Institution: ${institutionName}\n` : ""}${completionNote ? `Completion Note: ${completionNote}\n` : ""}
 View on Dashboard:
-${tasksUrl}
+${currentTasksUrl}
 
-Client Registry Management System (impdatabase.vercel.app)
+Client Registry Management System (${displayHost})
   `.trim();
   return await sendEmail({
     to: recipientEmail,
@@ -1312,6 +1375,9 @@ export async function sendWebsiteExpiryAlertEmail(
   if (!recipientEmail) {
     return { success: false, error: "No recipient email address provided for website expiry alert." };
   }
+
+  const appBaseUrl = await getAppBaseUrl();
+  const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(expireDate);
   const displayName = institutionNameBangla
@@ -1444,7 +1510,7 @@ export async function sendWebsiteExpiryAlertEmail(
           <!-- Footer -->
           <tr>
             <td style="background-color: #F1F5F9; padding: 14px; text-align: center; font-size: 12px; color: #475569; border-top: 1px solid #E2E8F0;">
-              Imperial IT &middot; Client Registry &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #0284C7; text-decoration: underline;">impdatabase.vercel.app</a>
+              Imperial IT &middot; Client Registry &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0284C7; text-decoration: underline;">${displayHost}</a>
             </td>
           </tr>
         </table>
@@ -1469,7 +1535,7 @@ Time Remaining: ${daysRemaining} days
 
 Please contact us or renew your license to avoid service disruption.
 
-Client Registry Management System (impdatabase.vercel.app)
+Client Registry Management System (${displayHost})
   `.trim();
 
   return await sendEmail({
@@ -1518,6 +1584,9 @@ export async function sendCompanySubscriptionExpiryAlertEmail(
   if (!recipientEmail) {
     return { success: false, error: "No recipient email address provided for subscription expiry alert." };
   }
+
+  const appBaseUrl = await getAppBaseUrl();
+  const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(expireDate);
   const displayName = companyNameBangla ? `${companyName} (${companyNameBangla})` : companyName;
@@ -1635,7 +1704,7 @@ export async function sendCompanySubscriptionExpiryAlertEmail(
           <!-- Footer -->
           <tr>
             <td style="background-color: #F1F5F9; padding: 14px; text-align: center; font-size: 12px; color: #475569; border-top: 1px solid #E2E8F0;">
-              Imperial IT &middot; Client Registry &copy; ${new Date().getFullYear()} &middot; <a href="${SITE_URL}" style="color: #7C3AED; text-decoration: underline;">impdatabase.vercel.app</a>
+              Imperial IT &middot; Client Registry &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #7C3AED; text-decoration: underline;">${displayHost}</a>
             </td>
           </tr>
         </table>
@@ -1661,7 +1730,7 @@ Days Remaining: ${daysRemaining} days
 
 Please contact us to renew your subscription.
 
-Client Registry Management System (impdatabase.vercel.app)
+Client Registry Management System (${displayHost})
   `.trim();
 
   return await sendEmail({

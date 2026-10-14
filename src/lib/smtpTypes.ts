@@ -11,6 +11,7 @@ export interface SmtpConfig {
   fromEmail: string;
   fromName: string;
   replyTo?: string;
+  appUrl?: string;
   useBrevoFallback: boolean;
 }
 
@@ -29,6 +30,7 @@ export const DEFAULT_SMTP_CONFIG: SmtpConfig = {
   fromEmail: "",
   fromName: "Imperial IT",
   replyTo: "",
+  appUrl: "",
   useBrevoFallback: true,
 };
 

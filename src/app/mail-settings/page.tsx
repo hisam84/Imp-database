@@ -751,6 +751,33 @@ export default function MailSettingsPage() {
                 </div>
               </div>
 
+              {/* Application Base URL for Email Links */}
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Application Live URL / Domain (ইমেইল টেমপ্লেট ও নোটিফিকেশন লিংক)
+                    </label>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      ইমেইলে পাঠানো ড্যাশবোর্ড বাটন, টাস্ক লিংক ও ফুটার ডোমেইনে এই লিংকটি ব্যবহার হবে (যেমন: VPS IP বা নিজস্ব ডোমেইন)।
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                    Optional
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={smtpConfig.appUrl || ""}
+                  onChange={(e) => setSmtpConfig({ ...smtpConfig, appUrl: e.target.value })}
+                  placeholder="e.g. https://yourdomain.com/database or http://123.45.67.89:3000/database"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                  ফাঁকা রাখলে এনভায়রনমেন্ট ভেরিয়েবল <code>APP_URL</code> বা <code>NEXT_PUBLIC_APP_URL</code> অটোমেটিক কার্যকর হবে (এবং /database পাথ নিশ্চিত করবে)।
+                </p>
+              </div>
+
               {/* Brevo Fallback Toggle */}
               <div className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between">
                 <div>

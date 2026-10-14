@@ -40,6 +40,7 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
         fromEmail: meta.fromEmail || "",
         fromName: meta.fromName || "Imperial IT",
         replyTo: meta.replyTo || "",
+        appUrl: meta.appUrl ? meta.appUrl.trim() : "",
         useBrevoFallback: typeof meta.useBrevoFallback === "boolean" ? meta.useBrevoFallback : true,
       };
     }
@@ -87,6 +88,7 @@ export async function saveSmtpConfig(
     fromEmail: (newConfig.fromEmail ?? current.fromEmail).trim(),
     fromName: (newConfig.fromName ?? current.fromName).trim() || "Imperial IT",
     replyTo: (newConfig.replyTo ?? current.replyTo ?? "").trim(),
+    appUrl: (newConfig.appUrl ?? current.appUrl ?? "").trim(),
     useBrevoFallback:
       typeof newConfig.useBrevoFallback === "boolean"
         ? newConfig.useBrevoFallback
@@ -103,6 +105,7 @@ export async function saveSmtpConfig(
     fromEmail: merged.fromEmail,
     fromName: merged.fromName,
     replyTo: merged.replyTo,
+    appUrl: merged.appUrl,
     useBrevoFallback: merged.useBrevoFallback,
   };
 
