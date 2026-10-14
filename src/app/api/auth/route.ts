@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         deletedAt: null,
         OR: [
           { email: userInput },
-          { name: { equals: userInput, mode: "insensitive" } },
+          { name: userInput },
         ],
       },
     });
