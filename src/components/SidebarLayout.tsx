@@ -321,7 +321,7 @@ export function SidebarLayout({
             </svg>
           </button>
           <div className="flex items-center gap-2.5">
-            <img src="/pad.png" alt="Imperial IT Logo" className="w-7 h-7 object-contain rounded-md" />
+            <img src="/database/pad.png" alt="Imperial IT Logo" className="w-7 h-7 object-contain rounded-md" />
             <div>
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#0D47A1] dark:text-[#90CAF9] block leading-none">
                 Imperial IT
@@ -505,7 +505,7 @@ export function SidebarLayout({
           <div>
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-5">
               <div className="flex items-center gap-2.5">
-                <img src="/pad.png" alt="Imperial IT Logo" className="w-8 h-8 object-contain rounded-md" />
+                <img src="/database/pad.png" alt="Imperial IT Logo" className="w-8 h-8 object-contain rounded-md" />
                 <div>
                   <span className="text-xs font-bold uppercase tracking-[0.2em] text-brass-600 dark:text-brass-400 block">
                     Imperial IT
@@ -627,7 +627,7 @@ export function SidebarLayout({
           >
             <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? "justify-center" : ""}`}>
               <img
-                src="/pad.png"
+                src="/database/pad.png"
                 alt="Imperial IT Logo"
                 className="w-9 h-9 object-contain rounded-lg shadow-sm border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900 p-1 shrink-0"
               />

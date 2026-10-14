@@ -62,13 +62,13 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-6 p-8 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-800">
         <div className="text-center flex flex-col items-center">
-          {/* Imperial IT High-Res Vector SVG Logo */}
-          <div className="w-16 h-16 rounded-2xl bg-[#0D47A1] border-2 border-[#2196F3] flex items-center justify-center shadow-lg shadow-blue-900/30 mb-3 shrink-0">
-            <svg className="w-10 h-10" viewBox="0 0 100 100" fill="none">
-              <rect width="100" height="100" rx="22" fill="#0D47A1"/>
-              <circle cx="50" cy="50" r="42" fill="none" stroke="#2196F3" strokeWidth="6"/>
-              <text x="50%" y="64%" textAnchor="middle" fill="#FFFFFF" fontFamily="system-ui, sans-serif" fontWeight="900" fontSize="44">IT</text>
-            </svg>
+          {/* Imperial IT Logo */}
+          <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center shadow-md shadow-blue-900/10 mb-3 shrink-0 p-2">
+            <img
+              src="/database/pad.png"
+              alt="Imperial IT Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
 
           <h2 className="text-center text-3xl font-extrabold text-[#0D47A1] dark:text-[#E3F2FD] tracking-tight">

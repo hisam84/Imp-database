@@ -27,9 +27,12 @@ export const metadata: Metadata = {
   title: "Imperial IT | Client Registry",
   description: "The complete IT solution - Institution client database and management console",
   icons: {
-    icon: "/pad.png",
-    shortcut: "/pad.png",
-    apple: "/pad.png",
+    icon: [
+      { url: "/database/favicon.ico" },
+      { url: "/database/pad.png", type: "image/png" },
+    ],
+    shortcut: "/database/pad.png",
+    apple: "/database/pad.png",
   },
 };
 
@@ -37,8 +40,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/pad.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/pad.png" />
+        <link rel="icon" href="/database/favicon.ico" sizes="any" />
+        <link rel="icon" href="/database/pad.png" type="image/png" />
+        <link rel="shortcut icon" href="/database/favicon.ico" />
+        <link rel="apple-touch-icon" href="/database/pad.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
