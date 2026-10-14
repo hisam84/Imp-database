@@ -1,0 +1,54 @@
+{
+  "name": "Imperial IT Client Registry",
+  "short_name": "Imperial IT",
+  "description": "The complete IT solution - Client Registry and Management Console",
+  "start_url": "/database/dashboard",
+  "scope": "/database/",
+  "id": "/database/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0D47A1",
+  "theme_color": "#0D47A1",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/database/pad.png",
+      "sizes": "any",
+      "type": "image/png"
+    },
+    {
+      "src": "/database/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/database/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/database/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Tasks Dashboard",
+      "short_name": "Tasks",
+      "description": "View and manage all assigned tasks",
+      "url": "/database/tasks",
+      "icons": [{ "src": "/database/pad.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Institutions Directory",
+      "short_name": "Institutions",
+      "description": "Browse registered client institutions",
+      "url": "/database/dashboard",
+      "icons": [{ "src": "/database/pad.png", "sizes": "192x192" }]
+    }
+  ]
+}
