@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
-import { TargetedClient } from "@/lib/types";
-import { Badge } from "@/components/ui";
+import React, { useState, useRef, useEffect, Fragment } from "react";
+import { createPortal } from "react-dom";
+import { TargetedClient, CallUpdate } from "@/lib/types";
+import { formatDhakaDateTime } from "@/lib/dateUtils";
+import { CallUpdateModal } from "@/components/CallUpdateModal";
 
 interface Props {
   clients: TargetedClient[];
@@ -10,6 +12,252 @@ interface Props {
   onDelete: (client: TargetedClient) => void;
   onConvertToMain?: (client: TargetedClient) => void;
   onAddTask?: (client: TargetedClient) => void;
+  onCallUpdateAdded?: (clientId: string, updatedList: CallUpdate[]) => void;
+}
+
+function getPriorityBadge(priority: string) {
+  if (priority === "High") {
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 whitespace-nowrap">
+        High
+      </span>
+    );
+  }
+  if (priority === "Low") {
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 whitespace-nowrap">
+        Low
+      </span>
+    );
+  }
+  return (
+    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+      {priority || "Default"}
+    </span>
+  );
+}
+
+function ActionMenu({
+  client,
+  onEdit,
+  onDelete,
+  onToggleArchive,
+  onConvertToMain,
+  onAddTask,
+  onCallUpdate,
+}: {
+  client: TargetedClient;
+  onEdit: (c: TargetedClient) => void;
+  onDelete: (c: TargetedClient) => void;
+  onToggleArchive: (c: TargetedClient) => void;
+  onConvertToMain?: (c: TargetedClient) => void;
+  onAddTask?: (c: TargetedClient) => void;
+  onCallUpdate?: (c: TargetedClient) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [menuCoords, setMenuCoords] = useState<{ top: number; right: number; placeAbove: boolean }>({
+    top: 0,
+    right: 0,
+    placeAbove: false,
+  });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const callCount = Array.isArray(client.callUpdates) ? client.callUpdates.length : 0;
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuHeight = 240;
+      const placeAbove = rect.bottom + menuHeight > window.innerHeight;
+
+      setMenuCoords({
+        top: placeAbove ? rect.top - 6 : rect.bottom + 6,
+        right: Math.max(12, window.innerWidth - rect.right),
+        placeAbove,
+      });
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleClickOutside(e: MouseEvent) {
+      if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
+        const portal = document.getElementById(`targeted-action-portal-${client.id}`);
+        if (portal && portal.contains(e.target as Node)) return;
+        setIsOpen(false);
+      }
+    }
+
+    function handleScrollOrResize() {
+      setIsOpen(false);
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setIsOpen(false);
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, client.id]);
+
+  return (
+    <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={handleToggle}
+        className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all shadow-xs cursor-pointer ${
+          isOpen
+            ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/20"
+            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+        }`}
+        title="Actions"
+        aria-label="Actions"
+      >
+        <span>Actions</span>
+        <svg
+          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-blue-500" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            id={`targeted-action-portal-${client.id}`}
+            style={{
+              position: "fixed",
+              top: menuCoords.placeAbove ? undefined : `${menuCoords.top}px`,
+              bottom: menuCoords.placeAbove ? `${window.innerHeight - menuCoords.top}px` : undefined,
+              right: `${menuCoords.right}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="z-[9999] w-52 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-1.5 shadow-xl text-left backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+          >
+            <div className="space-y-0.5">
+              {onCallUpdate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onCallUpdate(client);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span>Call Update</span>
+                  </div>
+                  {callCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                      {callCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {onAddTask && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onAddTask(client);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors text-left cursor-pointer"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add Task</span>
+                </button>
+              )}
+
+              {onConvertToMain && !client.isArchived && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onConvertToMain(client);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors text-left cursor-pointer"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                  <span>Promote to Main</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onEdit(client);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer"
+              >
+                <svg className="w-4 h-4 shrink-0 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>Edit Client</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onToggleArchive(client);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer"
+              >
+                <svg className="w-4 h-4 shrink-0 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                <span>{client.isArchived ? "Restore Client" : "Archive Client"}</span>
+              </button>
+
+              <div className="my-1 border-t border-slate-200 dark:border-slate-800" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onDelete(client);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors text-left cursor-pointer"
+              >
+                <svg className="w-4 h-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Delete Client</span>
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
 }
 
 export function TargetedClientTable({
@@ -19,8 +267,10 @@ export function TargetedClientTable({
   onDelete,
   onConvertToMain,
   onAddTask,
+  onCallUpdateAdded,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedCallClient, setSelectedCallClient] = useState<TargetedClient | null>(null);
 
   if (clients.length === 0) {
     return (
@@ -30,36 +280,16 @@ export function TargetedClientTable({
     );
   }
 
-  function getPriorityBadge(priority: string) {
-    if (priority === "High") {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 whitespace-nowrap">
-          High
-        </span>
-      );
-    }
-    if (priority === "Low") {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 whitespace-nowrap">
-          Low
-        </span>
-      );
-    }
-    return (
-      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
-        {priority || "Default"}
-      </span>
-    );
-  }
-
   return (
     <>
       {/* ========================================================================= */}
-      {/* MOBILE VIEW (< md) - Full Width Cards, All Info & Actions in Dropdown     */}
+      {/* MOBILE VIEW (< md) - Clean Cards with Dropdown                            */}
       {/* ========================================================================= */}
       <div className="md:hidden space-y-2.5 max-w-full overflow-hidden">
         {clients.map((client, index) => {
           const isOpen = expandedId === client.id;
+          const callCount = Array.isArray(client.callUpdates) ? client.callUpdates.length : 0;
+          const calls = Array.isArray(client.callUpdates) ? client.callUpdates : [];
 
           return (
             <div
@@ -99,185 +329,84 @@ export function TargetedClientTable({
                         </h3>
                         {getPriorityBadge(client.priority)}
                       </div>
-
                       {client.instituteNameBangla && (
-                        <p className="bn text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-bengali">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-bengali mt-0.5">
                           {client.instituteNameBangla}
                         </p>
                       )}
-
-                      <div className="mt-1.5 flex items-center justify-between gap-2 flex-wrap text-xs text-slate-500">
-                        <span className="truncate flex-1 min-w-0 font-medium">
-                          {[client.subDistrict, client.district].filter(Boolean).join(", ") || "No location"}
-                        </span>
-                        {client.isArchived ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 shrink-0">
-                            Archived
+                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+                        {client.contactPerson && (
+                          <span className="font-medium text-slate-700 dark:text-slate-300">
+                            👤 {client.contactPerson}
                           </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
-                            Active
+                        )}
+                        {client.phone && (
+                          <span className="font-mono text-slate-600 dark:text-slate-400">
+                            📞 {client.phone}
                           </span>
                         )}
                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {/* Call Update Button on Mobile Header */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCallClient(client)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                          callCount > 0
+                            ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                        }`}
+                        title="Call Update"
+                      >
+                        <svg className={`w-3.5 h-3.5 ${callCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        {callCount > 0 && <span className="font-bold">{callCount}</span>}
+                      </button>
+
+                      <ActionMenu
+                        client={client}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onToggleArchive={onToggleArchive}
+                        onConvertToMain={onConvertToMain}
+                        onAddTask={onAddTask}
+                        onCallUpdate={(c) => setSelectedCallClient(c)}
+                      />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Dropdown Accordion Content (Visible when Expanded) */}
+              {/* Mobile Expanded Information Dropdown */}
               {isOpen && (
-                <div className="p-3.5 pt-0 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40">
-                  {/* Action Buttons for Mobile */}
-                  <div className="grid grid-cols-2 gap-2 my-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                    {onConvertToMain && !client.isArchived && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onConvertToMain(client);
-                        }}
-                        className="py-2.5 px-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95 col-span-2"
-                      >
-                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                        </svg>
-                        <span>Promote to Main Registry</span>
-                      </button>
-                    )}
-
-                    {onAddTask && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAddTask(client);
-                        }}
-                        className="py-2.5 px-3 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
-                      >
-                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span>Add Task</span>
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(client);
-                      }}
-                      className="py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-300 hover:text-blue-600 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
-                    >
-                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      <span>Edit</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleArchive(client);
-                      }}
-                      className={`py-2.5 px-3 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95 ${
-                        client.isArchived
-                          ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 hover:bg-sky-500/20"
-                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-300 hover:text-sky-600"
-                      }`}
-                    >
-                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                      </svg>
-                      <span>{client.isArchived ? "Restore" : "Archive"}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(client);
-                      }}
-                      className="py-2.5 px-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 hover:bg-red-500/20 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
-                    >
-                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span>Delete</span>
-                    </button>
-                  </div>
-
-                  {/* All Client Details in Dropdown */}
-                  <div className="space-y-2 text-xs">
-                    {/* Contact Person */}
+                <div className="p-3.5 pt-0 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40 text-xs space-y-3">
+                  <div className="grid grid-cols-1 gap-2 pt-2 text-slate-600 dark:text-slate-400">
                     <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Contact Person:</span>
+                      <span className="font-medium text-slate-500">Location:</span>
                       <span className="font-semibold text-slate-800 dark:text-slate-200">
-                        {client.contactPerson || "—"}
-                      </span>
-                    </div>
-
-                    {/* Phone */}
-                    <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Phone:</span>
-                      {client.phone ? (
-                        <a
-                          href={`tel:${client.phone}`}
-                          className="font-mono font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                          {client.phone}
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-600">—</span>
-                      )}
-                    </div>
-
-                    {/* Email */}
-                    <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Email:</span>
-                      {client.email ? (
-                        <a
-                          href={`mailto:${client.email}`}
-                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[200px]"
-                        >
-                          {client.email}
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-600">—</span>
-                      )}
-                    </div>
-
-                    {/* Location */}
-                    <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">District & Sub-District:</span>
-                      <span className="font-medium text-slate-800 dark:text-slate-200">
                         {[client.subDistrict, client.district].filter(Boolean).join(", ") || "—"}
                       </span>
                     </div>
 
-                    {/* Address */}
                     {client.address && (
                       <div className="py-1 border-b border-slate-100 dark:border-slate-800/60">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium block mb-0.5">Address:</span>
-                        <p className="text-slate-700 dark:text-slate-300">{client.address}</p>
+                        <span className="font-medium text-slate-500 block mb-0.5">Address:</span>
+                        <p className="text-slate-800 dark:text-slate-200">{client.address}</p>
                       </div>
                     )}
 
-                    {/* Added By */}
-                    <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Added By:</span>
-                      {client.createdBy?.name ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-purple-500/10 text-purple-700 dark:text-purple-300">
-                          👤 {client.createdBy.name}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-500">Admin / System</span>
-                      )}
-                    </div>
+                    {client.email && (
+                      <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                        <span className="font-medium text-slate-500">Email:</span>
+                        <a href={`mailto:${client.email}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                          {client.email}
+                        </a>
+                      </div>
+                    )}
 
-                    {/* Notes / Remarks */}
                     {client.notes && (
                       <div className="mt-2 rounded-lg bg-sky-500/5 dark:bg-sky-950/20 p-3 border border-sky-500/20">
                         <span className="font-bold text-sky-700 dark:text-sky-400 block mb-1">Notes / Remarks:</span>
@@ -286,6 +415,41 @@ export function TargetedClientTable({
                         </p>
                       </div>
                     )}
+
+                    {/* Recent Call Log in Dropdown */}
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-amber-700 dark:text-amber-400 text-xs">
+                          📞 Recent Call Updates ({callCount}):
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCallClient(client)}
+                          className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                        >
+                          + Log Call
+                        </button>
+                      </div>
+
+                      {calls.length === 0 ? (
+                        <p className="text-slate-400 italic text-[11px]">No call updates logged yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {calls.slice(0, 3).map((call, idx) => (
+                            <div key={call.id || idx} className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                              <div className="flex items-center justify-between text-[11px] mb-1">
+                                <span className="font-bold text-slate-900 dark:text-slate-100">{call.subject}</span>
+                                <span className="text-slate-400 font-mono text-[10px]">{formatDhakaDateTime(call.createdAt)}</span>
+                              </div>
+                              <div className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 mb-1">
+                                <span>👤 Spoke with: <strong>{call.employeeName}</strong></span>
+                              </div>
+                              <p className="text-slate-600 dark:text-slate-300 text-[11px]">{call.details}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -295,186 +459,369 @@ export function TargetedClientTable({
       </div>
 
       {/* ========================================================================= */}
-      {/* DESKTOP VIEW (>= md) - Standard Full Table Layout                         */}
+      {/* DESKTOP VIEW (>= md) - Clean Table with Actions Button & Info Dropdown    */}
       {/* ========================================================================= */}
       <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+        <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 border-collapse table-fixed">
           <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-950/80 text-[11px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
             <tr>
-              <th className="px-4 py-3.5">Priority</th>
-              <th className="px-4 py-3.5">Institute Name</th>
-              <th className="px-4 py-3.5">Contact Person</th>
-              <th className="px-4 py-3.5">Phone & Email</th>
-              <th className="px-4 py-3.5">Location</th>
-              <th className="px-4 py-3.5">Added By</th>
-              <th className="px-4 py-3.5">Status</th>
-              <th className="px-4 py-3.5 text-right">Actions</th>
+              <th className="w-12 px-3 py-3.5 text-center">SL #</th>
+              <th className="w-8 px-2 py-3.5 text-center"></th>
+              <th className="w-24 px-3 py-3.5 text-center">Priority</th>
+              <th className="px-4 py-3.5 text-left">Institute Name</th>
+              <th className="w-44 px-3 py-3.5 text-left">Contact Person</th>
+              <th className="w-48 px-3 py-3.5 text-left">Phone & Email</th>
+              <th className="w-28 px-3 py-3.5 text-center">Status</th>
+              <th className="w-36 px-3 py-3.5 text-center">Call Update</th>
+              <th className="w-28 px-4 py-3.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
-            {clients.map((client) => {
-              const isExpanded = expandedId === client.id;
+            {clients.map((client, index) => {
+              const isOpen = expandedId === client.id;
+              const callCount = Array.isArray(client.callUpdates) ? client.callUpdates.length : 0;
+              const calls = Array.isArray(client.callUpdates) ? client.callUpdates : [];
 
               return (
-                <tr
-                  key={client.id}
-                  className={`transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-                    client.isArchived ? "opacity-60 bg-slate-100/50 dark:bg-slate-950/40" : ""
-                  }`}
-                >
-                  <td className="whitespace-nowrap px-4 py-3.5">
-                    {getPriorityBadge(client.priority)}
-                  </td>
+                <Fragment key={client.id}>
+                  <tr
+                    onClick={() => setExpandedId(isOpen ? null : client.id)}
+                    className={`cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+                      client.isArchived ? "opacity-60 bg-slate-100/50 dark:bg-slate-950/40" : ""
+                    } ${isOpen ? "bg-slate-50/90 dark:bg-slate-850/60" : ""}`}
+                  >
+                    {/* SL # */}
+                    <td className="w-12 px-3 py-3.5 text-center font-mono font-medium text-slate-500 dark:text-slate-400">
+                      {index + 1}
+                    </td>
 
-                  <td className="px-4 py-3.5">
-                    <div className="font-bold text-slate-900 dark:text-slate-100">{client.instituteName}</div>
-                    {client.instituteNameBangla && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400 font-bengali mt-0.5">
-                        {client.instituteNameBangla}
+                    {/* Chevron Dropdown Trigger */}
+                    <td className="w-8 px-2 py-3.5 text-center text-slate-400 dark:text-slate-500">
+                      <span className={`inline-block transition-transform text-sm ${isOpen ? "rotate-90 text-blue-600 dark:text-blue-400 font-bold" : ""}`}>
+                        ›
+                      </span>
+                    </td>
+
+                    {/* Priority */}
+                    <td className="w-24 px-3 py-3.5 text-center whitespace-nowrap">
+                      {getPriorityBadge(client.priority)}
+                    </td>
+
+                    {/* Institute Name */}
+                    <td className="px-4 py-3.5 text-left overflow-hidden">
+                      <div className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate">
+                        {client.instituteName}
                       </div>
-                    )}
-                  </td>
-
-                  <td className="px-4 py-3.5 font-medium">
-                    {client.contactPerson ? (
-                      <span className="text-slate-800 dark:text-slate-200 font-semibold">{client.contactPerson}</span>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-600">—</span>
-                    )}
-                  </td>
-
-                  <td className="px-4 py-3.5">
-                    {client.phone ? (
-                      <div className="font-mono text-xs text-slate-800 dark:text-slate-200 font-medium">{client.phone}</div>
-                    ) : null}
-                    {client.email ? (
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{client.email}</div>
-                    ) : null}
-                    {!client.phone && !client.email && <span className="text-slate-400 dark:text-slate-600">—</span>}
-                  </td>
-
-                  <td className="px-4 py-3.5">
-                    <div className="text-xs text-slate-700 dark:text-slate-300 font-medium">
-                      {[client.subDistrict, client.district].filter(Boolean).join(", ") || "—"}
-                    </div>
-                    {client.address && (
-                      <div className="text-[11px] text-slate-500 truncate max-w-xs" title={client.address}>
-                        {client.address}
+                      {client.instituteNameBangla && (
+                        <div className="text-xs text-slate-500 dark:text-slate-400 font-bengali truncate mt-0.5">
+                          {client.instituteNameBangla}
+                        </div>
+                      )}
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        📍 {[client.subDistrict, client.district].filter(Boolean).join(", ") || "No location specified"}
                       </div>
-                    )}
-                  </td>
+                    </td>
 
-                  <td className="whitespace-nowrap px-4 py-3.5">
-                    {client.createdBy?.name ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
-                        👤 {client.createdBy.name}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-500 font-mono text-xs">Admin / System</span>
-                    )}
-                  </td>
-
-                  <td className="whitespace-nowrap px-4 py-3.5">
-                    {client.isArchived ? (
-                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 whitespace-nowrap">
-                        Archived
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
-                        Active
-                      </span>
-                    )}
-                  </td>
-
-                  <td className="whitespace-nowrap px-4 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1.5 shrink-0">
-                      {client.notes && (
-                        <button
-                          onClick={() => setExpandedId(isExpanded ? null : client.id)}
-                          className="text-xs font-semibold text-brass-600 dark:text-brass-400 hover:underline px-1 py-1 whitespace-nowrap"
-                        >
-                          {isExpanded ? "Hide Note" : "View Note"}
-                        </button>
+                    {/* Contact Person */}
+                    <td className="w-44 px-3 py-3.5 text-left font-medium overflow-hidden">
+                      {client.contactPerson ? (
+                        <span className="text-slate-800 dark:text-slate-200 font-semibold truncate block">
+                          {client.contactPerson}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-600">—</span>
                       )}
+                    </td>
 
-                      {onConvertToMain && !client.isArchived && (
-                        <button
-                          type="button"
-                          onClick={() => onConvertToMain(client)}
-                          className="p-1.5 text-xs rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100 transition-colors flex items-center justify-center"
-                          title="Promote to Main Institutions Ledger"
-                          aria-label="Promote to Main Institutions Ledger"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                          </svg>
-                        </button>
+                    {/* Phone & Email */}
+                    <td className="w-48 px-3 py-3.5 text-left overflow-hidden">
+                      {client.phone ? (
+                        <div className="font-mono text-xs text-slate-800 dark:text-slate-200 font-medium truncate">
+                          📞 {client.phone}
+                        </div>
+                      ) : null}
+                      {client.email ? (
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          ✉️ {client.email}
+                        </div>
+                      ) : null}
+                      {!client.phone && !client.email && <span className="text-slate-400 dark:text-slate-600">—</span>}
+                    </td>
+
+                    {/* Status */}
+                    <td className="w-28 px-3 py-3.5 text-center whitespace-nowrap">
+                      {client.isArchived ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 whitespace-nowrap">
+                          Archived
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
+                          Active
+                        </span>
                       )}
+                    </td>
 
-                      {onAddTask && (
-                        <button
-                          type="button"
-                          onClick={() => onAddTask(client)}
-                          className="p-1.5 text-xs rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors flex items-center justify-center"
-                          title="Add Task for this client"
-                          aria-label="Add Task"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </button>
-                      )}
-
+                    {/* Dedicated Call Update Button */}
+                    <td className="w-36 px-3 py-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        onClick={() => onToggleArchive(client)}
-                        className="p-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center"
-                        title={client.isArchived ? "Restore Client" : "Archive Client"}
-                        aria-label={client.isArchived ? "Restore Client" : "Archive Client"}
+                        onClick={() => setSelectedCallClient(client)}
+                        className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
+                          callCount > 0
+                            ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50"
+                            : "bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        }`}
+                        title="View & Log Call Updates"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        <svg
+                          className={`w-3.5 h-3.5 ${callCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-400"}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                          />
                         </svg>
+                        <span>Call Update</span>
+                        {callCount > 0 && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white leading-tight">
+                            {callCount}
+                          </span>
+                        )}
                       </button>
+                    </td>
 
-                      <button
-                        type="button"
-                        onClick={() => onEdit(client)}
-                        className="p-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center"
-                        title="Edit Client"
-                        aria-label="Edit Client"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
+                    {/* Actions Dropdown Button */}
+                    <td className="w-28 px-4 py-3.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <ActionMenu
+                        client={client}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onToggleArchive={onToggleArchive}
+                        onConvertToMain={onConvertToMain}
+                        onAddTask={onAddTask}
+                        onCallUpdate={(c) => setSelectedCallClient(c)}
+                      />
+                    </td>
+                  </tr>
 
-                      <button
-                        type="button"
-                        onClick={() => onDelete(client)}
-                        className="p-1.5 text-xs rounded-md bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center"
-                        title="Delete Client"
-                        aria-label="Delete Client"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
+                  {/* ================================================================= */}
+                  {/* EXPANDABLE INFORMATION DROPDOWN (তথ্য ড্রপডাউন)                     */}
+                  {/* ================================================================= */}
+                  {isOpen && (
+                    <tr className="border-b border-slate-200 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-950/60 animate-in fade-in duration-100">
+                      <td colSpan={9} className="px-6 py-5">
+                        <div className="space-y-4">
+                          {/* Top Quick Actions in Expanded View */}
+                          <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                Detailed Information:
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {client.instituteName} {client.instituteNameBangla ? `(${client.instituteNameBangla})` : ""}
+                              </span>
+                            </div>
 
-                    {isExpanded && client.notes && (
-                      <div className="mt-2 rounded-lg bg-slate-50 dark:bg-slate-950 p-3 text-left text-xs text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-800">
-                        <span className="font-bold text-brass-600 dark:text-brass-400 block mb-1">Notes / Remarks:</span>
-                        <p className="whitespace-pre-wrap">{client.notes}</p>
-                      </div>
-                    )}
-                  </td>
-                </tr>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCallClient(client)}
+                                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+                              >
+                                📞 Call Update ({callCount})
+                              </button>
+
+                              {onAddTask && (
+                                <button
+                                  type="button"
+                                  onClick={() => onAddTask(client)}
+                                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  ➕ Add Task
+                                </button>
+                              )}
+
+                              {onConvertToMain && !client.isArchived && (
+                                <button
+                                  type="button"
+                                  onClick={() => onConvertToMain(client)}
+                                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  ⬆️ Promote to Main Ledger
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => onEdit(client)}
+                                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-blue-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5 cursor-pointer"
+                              >
+                                ✏️ Edit
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Details Grid */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                            {/* District & Sub-District */}
+                            <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+                                Location (District & Sub-District)
+                              </span>
+                              <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                {[client.subDistrict, client.district].filter(Boolean).join(", ") || "—"}
+                              </div>
+                            </div>
+
+                            {/* Full Address */}
+                            <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+                                Full Address
+                              </span>
+                              <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                {client.address || "—"}
+                              </div>
+                            </div>
+
+                            {/* Contact Person */}
+                            <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+                                Contact Person & Phone
+                              </span>
+                              <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                {client.contactPerson || "—"}
+                              </div>
+                              {client.phone && (
+                                <a
+                                  href={`tel:${client.phone}`}
+                                  className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-[11px] block mt-0.5"
+                                >
+                                  {client.phone}
+                                </a>
+                              )}
+                            </div>
+
+                            {/* Added By & Email */}
+                            <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+                                Added By & Email
+                              </span>
+                              <div className="font-semibold text-purple-700 dark:text-purple-300">
+                                {client.createdBy?.name ? `👤 ${client.createdBy.name}` : "Admin / System"}
+                              </div>
+                              {client.email && (
+                                <a
+                                  href={`mailto:${client.email}`}
+                                  className="text-blue-600 dark:text-blue-400 hover:underline text-[11px] block mt-0.5 truncate"
+                                >
+                                  {client.email}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Notes / Remarks if present */}
+                          {client.notes && (
+                            <div className="rounded-xl bg-sky-500/5 dark:bg-sky-950/20 p-3.5 border border-sky-500/20">
+                              <span className="font-bold text-sky-700 dark:text-sky-400 text-xs block mb-1">
+                                📝 Notes / Remarks:
+                              </span>
+                              <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-200 leading-relaxed text-xs">
+                                {client.notes}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Recent Call Updates Section with Caller Info */}
+                          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-amber-700 dark:text-amber-400 text-xs">
+                                  📞 Recent Communication & Call Updates ({callCount}):
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                  (Showing latest discussions & caller names)
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCallClient(client)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+                              >
+                                <span>+ Log New Call</span>
+                              </button>
+                            </div>
+
+                            {calls.length === 0 ? (
+                              <div className="py-4 text-center text-slate-400 text-xs">
+                                No call updates logged yet for this client. Click &ldquo;+ Log New Call&rdquo; to record discussions.
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {calls.slice(0, 6).map((call, idx) => (
+                                  <div
+                                    key={call.id || idx}
+                                    className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/50 space-y-1.5"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h5 className="font-bold text-slate-900 dark:text-slate-100 text-xs truncate">
+                                        {call.subject}
+                                      </h5>
+                                      <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                                        {formatDhakaDateTime(call.createdAt)}
+                                      </span>
+                                    </div>
+
+                                    {/* Caller Employee Badge */}
+                                    <div className="flex items-center gap-1">
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                                        👤 Spoke with: <strong>{call.employeeName || "Employee"}</strong>
+                                      </span>
+                                    </div>
+
+                                    <p className="text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed bg-white/70 dark:bg-slate-900/70 p-2 rounded border border-slate-200/60 dark:border-slate-800/60">
+                                      {call.details}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {/* ========================================================================= */}
+      {/* UNIVERSAL CALL UPDATE MODAL                                               */}
+      {/* ========================================================================= */}
+      {selectedCallClient && (
+        <CallUpdateModal
+          inst={selectedCallClient}
+          apiEndpoint={`/api/targeted-clients/${selectedCallClient.id}/call-updates`}
+          onClose={() => setSelectedCallClient(null)}
+          onCallUpdateAdded={(clientId, updatedCalls) => {
+            setSelectedCallClient((prev) =>
+              prev && prev.id === clientId ? { ...prev, callUpdates: updatedCalls } : prev
+            );
+            if (onCallUpdateAdded) {
+              onCallUpdateAdded(clientId, updatedCalls);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

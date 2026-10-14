@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { extractNotesAndCalls, packNotesAndCalls } from "@/lib/callUpdatesStorage";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,7 +15,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!client) {
       return NextResponse.json({ error: "Targeted client not found" }, { status: 404 });
     }
-    return NextResponse.json(client);
+    const { userNotes, callUpdates } = extractNotesAndCalls(client.notes);
+    return NextResponse.json({
+      ...client,
+      notes: userNotes || null,
+      callUpdates,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to fetch targeted client" }, { status: 500 });
   }
@@ -35,6 +41,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const priority = ["High", "Default", "Low"].includes(body.priority)
       ? body.priority
       : existing.priority;
+
+    let notesToSave = existing.notes;
+    if (body.notes !== undefined) {
+      const { callUpdates } = extractNotesAndCalls(existing.notes);
+      notesToSave = packNotesAndCalls(body.notes?.trim() || null, callUpdates);
+    }
 
     const updated = await prisma.targetedClient.update({
       where: { id: params.id },
@@ -67,13 +79,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         isArchived: body.isArchived !== undefined
           ? Boolean(body.isArchived)
           : existing.isArchived,
-        notes: body.notes !== undefined
-          ? (body.notes?.trim() || null)
-          : existing.notes,
+        notes: notesToSave,
       },
     });
 
-    return NextResponse.json(updated);
+    const { userNotes, callUpdates } = extractNotesAndCalls(updated.notes);
+    return NextResponse.json({
+      ...updated,
+      notes: userNotes || null,
+      callUpdates,
+    });
   } catch (error: any) {
     console.error("PUT /api/targeted-clients/[id] error:", error);
     return NextResponse.json({ error: error.message || "Failed to update targeted client" }, { status: 500 });

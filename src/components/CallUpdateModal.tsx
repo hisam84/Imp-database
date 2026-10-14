@@ -5,9 +5,16 @@ import { formatDhakaDate } from "@/lib/dateUtils";
 import { useUserSession } from "@/lib/userSession";
 
 interface Props {
-  inst: Institution;
+  inst: {
+    id: string;
+    instituteName: string;
+    instituteNameBangla?: string | null;
+    callUpdates?: CallUpdate[];
+    customFields?: Record<string, any>;
+  };
   onClose: () => void;
   onCallUpdateAdded?: (instId: string, updatedList: CallUpdate[]) => void;
+  apiEndpoint?: string;
 }
 
 function formatCallTime(dateStr: string) {
@@ -27,7 +34,7 @@ function formatCallTime(dateStr: string) {
   }
 }
 
-export function CallUpdateModal({ inst, onClose, onCallUpdateAdded }: Props) {
+export function CallUpdateModal({ inst, onClose, onCallUpdateAdded, apiEndpoint }: Props) {
   const { currentUser } = useUserSession();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
@@ -141,7 +148,8 @@ export function CallUpdateModal({ inst, onClose, onCallUpdateAdded }: Props) {
     setSuccessMsg("");
 
     try {
-      const res = await fetch(`/api/institutions/${inst.id}/call-updates`, {
+      const endpoint = apiEndpoint || `/api/institutions/${inst.id}/call-updates`;
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

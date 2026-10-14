@@ -262,6 +262,7 @@ export interface TargetedClient {
   priority: TargetedPriority;
   isArchived: boolean;
   notes: string | null;
+  callUpdates?: CallUpdate[];
   createdById?: string | null;
   createdBy?: {
     id: string;

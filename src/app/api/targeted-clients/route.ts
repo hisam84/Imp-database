@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { extractNotesAndCalls } from "@/lib/callUpdatesStorage";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -109,7 +110,16 @@ export async function GET(req: NextRequest) {
       return (a.instituteName || "").localeCompare(b.instituteName || "");
     });
 
-    return NextResponse.json(clients);
+    const mapped = clients.map((c) => {
+      const { userNotes, callUpdates } = extractNotesAndCalls(c.notes);
+      return {
+        ...c,
+        notes: userNotes || null,
+        callUpdates,
+      };
+    });
+
+    return NextResponse.json(mapped);
   } catch (error: any) {
     console.error("GET /api/targeted-clients error:", error);
     return NextResponse.json({ error: error.message || "Failed to fetch targeted clients" }, { status: 500 });

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/SidebarLayout";
 import { TaskFormModal } from "@/components/tasks/TaskFormModal";
-import { CustomFieldDef, Institution, TargetedClient } from "@/lib/types";
+import { CustomFieldDef, Institution, TargetedClient, CallUpdate } from "@/lib/types";
 import { TargetedFilterBar, TargetedFilters } from "@/components/targeted-clients/TargetedFilterBar";
 import { TargetedClientTable } from "@/components/targeted-clients/TargetedClientTable";
 import { TargetedClientForm } from "@/components/targeted-clients/TargetedClientForm";
@@ -208,6 +208,15 @@ export default function TargetedClientsPage() {
     </>
   );
 
+  function handleCallUpdateAdded(clientId: string, updatedCalls: CallUpdate[]) {
+    setClients((prev) =>
+      prev.map((c) => (c.id === clientId ? { ...c, callUpdates: updatedCalls } : c))
+    );
+    setAllClients((prev) =>
+      prev.map((c) => (c.id === clientId ? { ...c, callUpdates: updatedCalls } : c))
+    );
+  }
+
   return (
     <SidebarLayout
       title="Targeted Clients"
@@ -266,6 +275,7 @@ export default function TargetedClientsPage() {
             setTaskInstName(client.instituteName);
             setShowTaskModal(true);
           }}
+          onCallUpdateAdded={handleCallUpdateAdded}
         />
       )}
 
