@@ -20,14 +20,14 @@ export async function GET(req: NextRequest) {
     if (search) {
       and.push({
         OR: [
-          { instituteName: { contains: search, mode: "insensitive" } },
-          { instituteNameBangla: { contains: search, mode: "insensitive" } },
-          { contactPerson: { contains: search, mode: "insensitive" } },
-          { phone: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-          { district: { contains: search, mode: "insensitive" } },
-          { subDistrict: { contains: search, mode: "insensitive" } },
-          { address: { contains: search, mode: "insensitive" } },
+          { instituteName: { contains: search } },
+          { instituteNameBangla: { contains: search } },
+          { contactPerson: { contains: search } },
+          { phone: { contains: search } },
+          { email: { contains: search } },
+          { district: { contains: search } },
+          { subDistrict: { contains: search } },
+          { address: { contains: search } },
         ],
       });
     }
@@ -37,11 +37,11 @@ export async function GET(req: NextRequest) {
     }
 
     if (district) {
-      and.push({ district: { equals: district, mode: "insensitive" } });
+      and.push({ district: { equals: district } });
     }
 
     if (subDistrict) {
-      and.push({ subDistrict: { equals: subDistrict, mode: "insensitive" } });
+      and.push({ subDistrict: { equals: subDistrict } });
     }
 
     if (status === "archived") {

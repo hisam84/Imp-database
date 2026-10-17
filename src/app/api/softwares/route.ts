@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
     const existing = await (prisma as any).software.findFirst({
       where: {
-        name: { equals: name.trim(), mode: "insensitive" },
+        name: { equals: name.trim() },
         deletedAt: null,
       },
     });

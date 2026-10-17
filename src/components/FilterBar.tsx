@@ -39,8 +39,9 @@ export function FilterBar({
         />
         {onReset && (
           <button
+            type="button"
             onClick={onReset}
-            className="shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 sm:px-4 py-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 transition-colors shadow-sm"
+            className="shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 sm:px-4 py-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 transition-colors shadow-sm cursor-pointer"
           >
             <span className="hidden sm:inline">Reset Filters</span>
             <span className="sm:hidden">Reset</span>
@@ -72,7 +73,17 @@ export function FilterBar({
             </option>
           ))}
         </select>
-        <select className={`${inputClass} text-xs sm:text-sm`} value={filters.district} onChange={(e) => set("district", e.target.value)}>
+        <select
+          className={`${inputClass} text-xs sm:text-sm`}
+          value={filters.district}
+          onChange={(e) => {
+            onChange({
+              ...filters,
+              district: e.target.value,
+              subDistrict: "",
+            });
+          }}
+        >
           <option value="">All Districts</option>
           {districts.map((d) => (
             <option key={d} value={d}>

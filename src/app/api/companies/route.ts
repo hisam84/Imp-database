@@ -24,17 +24,17 @@ export async function GET(req: Request) {
 
     if (search) {
       where.OR = [
-        { companyName: { contains: search, mode: "insensitive" } },
-        { companyNameBangla: { contains: search, mode: "insensitive" } },
-        { contactPerson: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } },
-        { district: { contains: search, mode: "insensitive" } },
+        { companyName: { contains: search } },
+        { companyNameBangla: { contains: search } },
+        { contactPerson: { contains: search } },
+        { phone: { contains: search } },
+        { email: { contains: search } },
+        { district: { contains: search } },
       ];
     }
 
     if (district) {
-      where.district = { equals: district, mode: "insensitive" };
+      where.district = { equals: district };
     }
 
     if (softwareId) {

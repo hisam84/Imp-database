@@ -36,13 +36,13 @@ export async function GET(req: NextRequest) {
 
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-        { institutionName: { contains: search, mode: "insensitive" } },
-        { institution: { instituteName: { contains: search, mode: "insensitive" } } },
-        { assignedTo: { name: { contains: search, mode: "insensitive" } } },
-        { assignees: { some: { employee: { name: { contains: search, mode: "insensitive" } } } } },
-        { assignedBy: { name: { contains: search, mode: "insensitive" } } },
+        { title: { contains: search } },
+        { description: { contains: search } },
+        { institutionName: { contains: search } },
+        { institution: { instituteName: { contains: search } } },
+        { assignedTo: { name: { contains: search } } },
+        { assignees: { some: { employee: { name: { contains: search } } } } },
+        { assignedBy: { name: { contains: search } } },
       ];
     }
 

@@ -17,7 +17,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (name && name.trim() !== existing.name) {
       const duplicate = await (prisma as any).software.findFirst({
         where: {
-          name: { equals: name.trim(), mode: "insensitive" },
+          name: { equals: name.trim() },
           id: { not: params.id },
           deletedAt: null,
         },

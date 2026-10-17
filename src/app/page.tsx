@@ -108,14 +108,35 @@ function InstitutionsLedgerContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const districts = useMemo(
-    () => Array.from(new Set(allInstitutions.map((i) => i.district).filter(Boolean))).sort() as string[],
-    [allInstitutions]
-  );
-  const subDistricts = useMemo(
-    () => Array.from(new Set(allInstitutions.map((i) => i.subDistrict).filter(Boolean))).sort() as string[],
-    [allInstitutions]
-  );
+  const districts = useMemo(() => {
+    const list = allInstitutions
+      .map((i) => i.district?.trim())
+      .filter(Boolean) as string[];
+    const map = new Map<string, string>();
+    for (const d of list) {
+      const lower = d.toLowerCase();
+      if (!map.has(lower)) {
+        map.set(lower, d);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [allInstitutions]);
+
+  const subDistricts = useMemo(() => {
+    const list = allInstitutions
+      .filter((i) => !filters.district || i.district?.trim().toLowerCase() === filters.district.trim().toLowerCase())
+      .map((i) => i.subDistrict?.trim().replace(/\s+/g, " "))
+      .filter(Boolean) as string[];
+
+    const map = new Map<string, string>();
+    for (const s of list) {
+      const lower = s.toLowerCase();
+      if (!map.has(lower)) {
+        map.set(lower, s);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [allInstitutions, filters.district]);
 
   function refreshAfterChange() {
     setShowForm(false);
