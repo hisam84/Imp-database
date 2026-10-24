@@ -337,11 +337,17 @@ export async function sendAdnSms(options: SendSmsOptions): Promise<AdnSendRespon
     const errorCode = json.error?.error_code || json.api_response_code;
     const errorMessage = json.error?.error_message || json.api_response_message || "Failed to send SMS";
 
+    let ipHint = "";
+    if (String(errorCode) === "9998" || String(errorMessage).toUpperCase().includes("IP_NOT_WHITELISTED")) {
+      const serverIp = await getServerOutboundIp().catch(() => null);
+      ipHint = ` Your server IP ${serverIp ? `(${serverIp})` : ""} must be whitelisted in your ADN SMS Portal under API Settings / IP Whitelist.`;
+    }
+
     return {
       success: false,
       apiResponseCode: errorCode,
       apiResponseMessage: errorMessage,
-      error: `ADN SMS Error [${errorCode}]: ${errorMessage}`,
+      error: `ADN SMS Error [${errorCode}]: ${errorMessage}.${ipHint}`,
       rawResponse: json,
     };
   } catch (err: any) {
@@ -415,11 +421,17 @@ export async function checkAdnBalance(credentials?: AdnCredentials): Promise<Adn
     const errorCode = json.error?.error_code || json.api_response_code || 500;
     const errorMessage = json.error?.error_message || json.api_response_message || "Failed to check balance";
 
+    let ipHint = "";
+    if (String(errorCode) === "9998" || String(errorMessage).toUpperCase().includes("IP_NOT_WHITELISTED")) {
+      const serverIp = await getServerOutboundIp().catch(() => null);
+      ipHint = ` Your server IP ${serverIp ? `(${serverIp})` : ""} must be whitelisted in your ADN SMS Portal under API Settings / IP Whitelist.`;
+    }
+
     return {
       success: false,
       apiResponseCode: errorCode,
       apiResponseMessage: errorMessage,
-      error: `ADN SMS Error [${errorCode}]: ${errorMessage}`,
+      error: `ADN SMS Error [${errorCode}]: ${errorMessage}.${ipHint}`,
       rawResponse: json,
     };
   } catch (err: any) {
@@ -486,3 +498,32 @@ export async function checkAdnSmsStatus(
     return { success: false, error: err?.message || "Network error" };
   }
 }
+
+let cachedServerIp: { ip: string; fetchedAt: number } | null = null;
+
+/**
+ * Resolves the public outbound IP address of this server.
+ * ADN SMS requires this IP to be added in their portal whitelist (error 9998: IP_NOT_WHITELISTED).
+ */
+export async function getServerOutboundIp(): Promise<string | null> {
+  if (cachedServerIp && Date.now() - cachedServerIp.fetchedAt < 120000) {
+    return cachedServerIp.ip;
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch("https://api.ipify.org?format=json", { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.ip) {
+        cachedServerIp = { ip: data.ip, fetchedAt: Date.now() };
+        return data.ip;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return cachedServerIp?.ip || null;
+}
+

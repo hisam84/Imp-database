@@ -67,6 +67,8 @@ export default function SmsSettingsPage() {
     errors?: string[];
   } | null>(null);
 
+  const [serverPublicIp, setServerPublicIp] = useState<string>("");
+
   // Load Settings on Mount
   useEffect(() => {
     fetchSettings();
@@ -83,6 +85,9 @@ export default function SmsSettingsPage() {
         setSettings(data.settings);
         setHasExistingSecret(data.settings.hasApiSecret);
         setApiSecretInput(data.settings.apiSecret || "");
+      }
+      if (data.serverPublicIp) {
+        setServerPublicIp(data.serverPublicIp);
       }
     } catch (err: any) {
       setSaveError("Failed to load SMS settings: " + (err?.message || err));
@@ -480,21 +485,64 @@ export default function SmsSettingsPage() {
         {/* Balance Result Feedback */}
         {balanceResult && (
           <div
-            className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between animate-in fade-in ${
+            className={`p-4 rounded-2xl border text-xs space-y-2 animate-in fade-in ${
               balanceResult.success
                 ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200"
                 : "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-900 dark:text-red-200"
             }`}
           >
-            <div className="flex items-center gap-2">
-              <span className="text-base">{balanceResult.success ? "💳" : "⚠️"}</span>
-              <span>
-                {balanceResult.success
-                  ? `ADN SMS API Connected! Remaining balance: ${balanceResult.smsBalance?.toLocaleString()} SMS credits.`
-                  : `Balance Check Failed: ${balanceResult.error}`}
-              </span>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <span className="text-base mt-0.5">{balanceResult.success ? "💳" : "⚠️"}</span>
+                <div className="space-y-1">
+                  <div className="font-bold">
+                    {balanceResult.success
+                      ? `ADN SMS API Connected! Remaining balance: ${balanceResult.smsBalance?.toLocaleString()} SMS credits.`
+                      : `Balance Check Failed`}
+                  </div>
+                  {!balanceResult.success && (
+                    <div className="text-xs text-red-800 dark:text-red-300">
+                      {balanceResult.error}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setBalanceResult(null)} className="opacity-60 hover:opacity-100 p-1">✕</button>
             </div>
-            <button onClick={() => setBalanceResult(null)} className="opacity-60 hover:opacity-100">✕</button>
+
+            {/* Error 9998: IP_NOT_WHITELISTED Guided Action Box */}
+            {!balanceResult.success &&
+              (String(balanceResult.error).includes("9998") ||
+                String(balanceResult.error).includes("IP_NOT_WHITELISTED")) && (
+                <div className="mt-2 p-3 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-200 space-y-2">
+                  <div className="flex items-center justify-between font-bold text-xs">
+                    <span className="flex items-center gap-1.5 text-amber-900 dark:text-amber-100">
+                      <span>🛡️</span>
+                      <span>আইপি অনুমোদনের সমাধান (IP Whitelist Required):</span>
+                    </span>
+                    {serverPublicIp && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(serverPublicIp);
+                          alert(`সার্ভার আইপি (${serverPublicIp}) ক্লিপবোর্ডে কপি করা হয়েছে!`);
+                        }}
+                        className="px-2.5 py-1 rounded bg-[#0D47A1] text-white hover:bg-blue-700 font-mono text-[11px] font-bold cursor-pointer transition-colors shadow-xs"
+                      >
+                        Copy Server IP ({serverPublicIp}) 📋
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+                    ADN SMS আপনার নিরাপত্তা নিশ্চিত করতে শুধুমাত্র হোয়াইটলিস্টে থাকা আইপি থেকে রিকোয়েস্ট গ্রহণ করে।{" "}
+                    <strong>portal.adnsms.com</strong>-এ লগইন করে <strong>API Settings / IP Whitelist</strong> মেন্যুতে যান এবং আপনার সার্ভারের পাবলিক আইপি{" "}
+                    <strong className="font-mono bg-amber-100 dark:bg-amber-900/40 px-1 py-0.5 rounded text-amber-900 dark:text-amber-100">
+                      {serverPublicIp || "লিস্টেড আইপি"}
+                    </strong>{" "}
+                    যুক্ত করুন। আইপি যুক্ত করার পর অবিলম্বে গেটওয়ে সচল হয়ে যাবে।
+                  </p>
+                </div>
+              )}
           </div>
         )}
 
@@ -595,6 +643,35 @@ export default function SmsSettingsPage() {
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Connect your ADN SMS Provider account (https://portal.adnsms.com)
+                </p>
+              </div>
+
+              {/* Server Outbound IP Whitelist Callout */}
+              <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 text-xs space-y-2">
+                <div className="flex items-center justify-between font-bold">
+                  <span className="flex items-center gap-1.5 text-blue-900 dark:text-blue-100">
+                    <span>🛡️</span>
+                    <span>Server Outbound IP (For ADN Whitelist)</span>
+                  </span>
+                  {serverPublicIp ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(serverPublicIp);
+                        alert(`Server IP (${serverPublicIp}) copied to clipboard! Paste it into ADN SMS portal.`);
+                      }}
+                      className="px-2.5 py-1 rounded bg-[#0D47A1] hover:bg-blue-700 text-white font-mono text-[11px] font-bold cursor-pointer transition-colors shadow-xs flex items-center gap-1"
+                    >
+                      <span>Copy IP: {serverPublicIp}</span>
+                      <span>📋</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-mono text-slate-500">Detecting server IP...</span>
+                  )}
+                </div>
+                <p className="text-[11px] leading-relaxed text-blue-800 dark:text-blue-300">
+                  ADN SMS গেটওয়ে ব্যবহারের জন্য আপনার সার্ভার আইপি ADN পোর্টালে হোয়াইটলিস্ট থাকতে হয় (অন্যথায় এরর <strong>9998: IP_NOT_WHITELISTED</strong> আসে)।{" "}
+                  <strong>portal.adnsms.com</strong>-এ লগইন করে <strong>API Settings / IP Whitelist</strong>-এ এই আইপিটি যুক্ত করে সেভ করুন।
                 </p>
               </div>
 

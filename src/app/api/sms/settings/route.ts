@@ -6,12 +6,14 @@ import {
   DEFAULT_SMS_TEMPLATE,
   SmsSettings,
 } from "@/lib/smsSettings";
+import { getServerOutboundIp } from "@/lib/adnSmsService";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const settings = await getSmsSettings();
+    const serverPublicIp = await getServerOutboundIp().catch(() => null);
 
     // Mask secret for UI safety
     const maskedSecret = settings.apiSecret
@@ -27,6 +29,7 @@ export async function GET() {
         apiSecret: maskedSecret,
         hasApiSecret: Boolean(settings.apiSecret),
       },
+      serverPublicIp,
       defaults: DEFAULT_SMS_SETTINGS,
       defaultTemplate: DEFAULT_SMS_TEMPLATE,
     });
