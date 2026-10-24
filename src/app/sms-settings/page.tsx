@@ -626,6 +626,33 @@ export default function SmsSettingsPage() {
                   </span>
                 </div>
 
+                {/* PULL API Callback Webhook URL */}
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                      <span>📥</span>
+                      <span>PULL API / Incoming SMS Callback URL</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = typeof window !== "undefined" ? `${window.location.origin}/api/sms/callback` : "/api/sms/callback";
+                        navigator.clipboard.writeText(url);
+                        alert("Callback URL copied to clipboard: " + url);
+                      }}
+                      className="text-[11px] text-[#0D47A1] dark:text-[#90CAF9] font-semibold hover:underline cursor-pointer"
+                    >
+                      Copy URL
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    If your ADN SMS account supports PULL API (receiving replies from clients), enter this callback endpoint in your ADN SMS Portal:
+                  </p>
+                  <code className="block text-[11px] font-mono p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 text-blue-600 dark:text-blue-400 select-all">
+                    {typeof window !== "undefined" ? `${window.location.origin}/api/sms/callback` : "https://hisam.beepsystems.com.bd/database/api/sms/callback"}
+                  </code>
+                </div>
+
                 {/* Campaign Title & Message Type */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -1341,7 +1368,11 @@ export default function SmsSettingsPage() {
                       <td className="px-3.5 py-2.5 whitespace-nowrap">
                         {log.status === "SUCCESS" ? (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                            ✓ SUCCESS
+                            ✓ SENT
+                          </span>
+                        ) : log.status === "INCOMING" ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                            📥 REPLY
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300">

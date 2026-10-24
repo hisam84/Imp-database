@@ -25,7 +25,7 @@ export interface SmsLogEntry {
   milestoneDays: number;
   daysRemaining: number;
   messageText: string;
-  status: "SUCCESS" | "FAILED";
+  status: "SUCCESS" | "FAILED" | "INCOMING";
   smsUid?: string | null;
   apiResponseCode?: number;
   apiResponseMessage?: string;
