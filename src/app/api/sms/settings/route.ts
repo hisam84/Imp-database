@@ -68,7 +68,11 @@ export async function PUT(req: NextRequest) {
       payloadToSave.apiDomain = body.apiDomain.trim();
     }
 
-    if (typeof body.campaignTitle === "string") {
+    if (typeof body.senderId === "string") {
+      payloadToSave.senderId = body.senderId.trim();
+      payloadToSave.campaignTitle = body.senderId.trim();
+    } else if (typeof body.campaignTitle === "string") {
+      payloadToSave.senderId = body.campaignTitle.trim();
       payloadToSave.campaignTitle = body.campaignTitle.trim();
     }
 

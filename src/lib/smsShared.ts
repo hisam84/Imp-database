@@ -1,5 +1,5 @@
 /**
- * Shared SMS types, templates, and text calculation utilities.
+ * Shared SMS types, templates, and text calculation utilities for QSMS (Qolek SMS).
  * Completely isomorphic and safe for use in both Client Components and Server code.
  * (NO Node.js built-ins or Prisma/DB imports).
  */
@@ -15,8 +15,9 @@ export interface SmsSettings {
   enabled: boolean;
   apiKey: string;
   apiSecret: string;
-  apiDomain: string;
-  campaignTitle: string;
+  apiDomain: string; // e.g. "https://api.qsms.com.bd"
+  senderId: string;  // Approved Sender ID / Masking name on QSMS (e.g. "Imperial IT")
+  campaignTitle?: string; // Legacy alias for senderId
   expiryDaysMilestones: number[];
   recipientTargets: RecipientTargetsConfig;
   sendMode: "first_available" | "all_selected";
@@ -62,34 +63,35 @@ export interface SmsExpiryCheckResult {
   }>;
 }
 
-export interface AdnCredentials {
+export interface QsmsCredentials {
   apiKey: string;
   apiSecret: string;
   apiDomain?: string;
+  senderId?: string;
 }
 
 export interface SendSmsOptions {
   to: string;
   message: string;
-  requestType?: "SINGLE_SMS" | "OTP";
-  messageType?: "AUTO" | "TEXT" | "UNICODE";
-  campaignTitle?: string;
-  credentials?: AdnCredentials;
+  senderId?: string;
+  campaignTitle?: string; // Backward compatibility
+  requestType?: string;
+  messageType?: "AUTO" | "TEXT" | "UNICODE" | "plain" | "unicode";
+  credentials?: QsmsCredentials;
 }
 
-export interface AdnSendResponse {
+export interface QsmsSendResponse {
   success: boolean;
-  requestType?: string;
+  messageId?: string | null;
   campaignUid?: string | null;
   smsUid?: string | null;
-  invalidNumbers?: string[];
   apiResponseCode?: number;
   apiResponseMessage?: string;
   error?: string;
   rawResponse?: any;
 }
 
-export interface AdnBalanceResponse {
+export interface QsmsBalanceResponse {
   success: boolean;
   smsBalance?: number;
   apiResponseCode?: number;
@@ -98,6 +100,10 @@ export interface AdnBalanceResponse {
   rawResponse?: any;
 }
 
+// Backward compatibility aliases for ADN
+export type AdnCredentials = QsmsCredentials;
+export type AdnSendResponse = QsmsSendResponse;
+export type AdnBalanceResponse = QsmsBalanceResponse;
 export interface AdnSmsStatusResponse {
   success: boolean;
   smsUid?: string;
@@ -115,8 +121,9 @@ export const DEFAULT_SMS_SETTINGS: SmsSettings = {
   enabled: true,
   apiKey: "",
   apiSecret: "",
-  apiDomain: "https://portal.adnsms.com",
-  campaignTitle: "Imperial_IT",
+  apiDomain: "https://api.qsms.com.bd",
+  senderId: "Imperial IT",
+  campaignTitle: "Imperial IT",
   expiryDaysMilestones: [30, 15, 7, 3, 1],
   recipientTargets: {
     contact1: true,
@@ -132,11 +139,12 @@ export const DEFAULT_SMS_SETTINGS: SmsSettings = {
   messageType: "AUTO",
 };
 
-export const SMS_SETTINGS_KEY = "adn_sms_settings";
+export const SMS_SETTINGS_KEY = "qsms_settings";
+export const LEGACY_SMS_SETTINGS_KEY = "adn_sms_settings";
 
 /**
  * Normalizes a Bangladeshi mobile phone number into 13-digit format (8801XXXXXXXXX)
- * or 11-digit (01XXXXXXXXX). ADN SMS accepts both, but 8801XXXXXXXXX is standard.
+ * or 11-digit (01XXXXXXXXX). QSMS accepts both 8801XXXXXXXXX and +8801XXXXXXXXX.
  */
 export function normalizeBdPhoneNumber(input: string | null | undefined): string | null {
   if (!input) return null;

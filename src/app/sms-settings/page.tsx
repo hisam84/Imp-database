@@ -165,6 +165,7 @@ export default function SmsSettingsPage() {
           apiKey: settings.apiKey,
           apiSecret: apiSecretInput && !apiSecretInput.includes("••••") ? apiSecretInput : undefined,
           apiDomain: settings.apiDomain,
+          senderId: settings.senderId || settings.campaignTitle,
         }),
       });
       const raw = await res.text();
@@ -199,7 +200,8 @@ export default function SmsSettingsPage() {
           apiKey: settings.apiKey,
           apiSecret: apiSecretInput && !apiSecretInput.includes("••••") ? apiSecretInput : undefined,
           apiDomain: settings.apiDomain,
-          campaignTitle: settings.campaignTitle,
+          senderId: settings.senderId || settings.campaignTitle,
+          campaignTitle: settings.senderId || settings.campaignTitle,
         }),
       });
       const raw = await res.text();
@@ -448,18 +450,18 @@ export default function SmsSettingsPage() {
             </label>
           </div>
 
-          {/* ADN Gateway Live Balance Card */}
+          {/* QSMS Gateway Live Status Card */}
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center justify-between">
             <div className="space-y-1 min-w-0">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                ADN SMS Gateway Balance
+                QSMS Gateway Status
               </span>
               <div className="flex items-baseline gap-2">
                 <h3 className="text-lg font-extrabold text-[#0D47A1] dark:text-[#90CAF9] truncate">
-                  {balanceResult?.smsBalance !== undefined
-                    ? `${balanceResult.smsBalance.toLocaleString()} SMS`
+                  {balanceResult?.success
+                    ? "Connected & Active"
                     : hasExistingSecret
-                    ? "Click Check"
+                    ? "Click Test Connection"
                     : "Not Configured"}
                 </h3>
               </div>
@@ -469,7 +471,7 @@ export default function SmsSettingsPage() {
                 onClick={handleRunDiagnosis}
                 disabled={diagnosing}
                 className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
-                title="Diagnose DNS, TCP port 443, and Gateway reachability"
+                title="Diagnose DNS, TCP port 443, and QSMS Gateway reachability"
               >
                 {diagnosing ? (
                   <span className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
@@ -483,7 +485,7 @@ export default function SmsSettingsPage() {
                 onClick={handleCheckBalance}
                 disabled={checkingBalance}
                 className="px-3 py-1.5 bg-[#0D47A1]/10 hover:bg-[#0D47A1]/20 text-[#0D47A1] dark:text-[#90CAF9] border border-[#0D47A1]/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-                title="Query live balance from ADN SMS API"
+                title="Verify connection to QSMS Gateway API"
               >
                 {checkingBalance ? (
                   <span className="w-3.5 h-3.5 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
@@ -492,7 +494,7 @@ export default function SmsSettingsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 )}
-                <span>Check</span>
+                <span>Test Connection</span>
               </button>
             </div>
           </div>
@@ -530,7 +532,7 @@ export default function SmsSettingsPage() {
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
               <span className="font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
                 <span>🔍</span>
-                <span>ADN SMS Network & Gateway Diagnostics</span>
+                <span>QSMS (Qolek SMS) Network & Gateway Diagnostics</span>
               </span>
               <button onClick={() => setDiagnoseResult(null)} className="opacity-60 hover:opacity-100 p-1">✕</button>
             </div>
@@ -542,7 +544,7 @@ export default function SmsSettingsPage() {
                   {diagnoseResult.serverOutboundIp || "Unknown"}
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  (এই আইপিটি ADN পোর্টালে যুক্ত থাকতে হবে)
+                  (আপনার সার্ভারের পাবলিক আইপি)
                 </div>
               </div>
 
@@ -554,7 +556,7 @@ export default function SmsSettingsPage() {
                   </span>
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  portal.adnsms.com ({diagnoseResult.dns?.latencyMs}ms)
+                  {diagnoseResult.dns?.host || "api.qsms.com.bd"} ({diagnoseResult.dns?.latencyMs}ms)
                 </div>
               </div>
 
@@ -562,11 +564,11 @@ export default function SmsSettingsPage() {
                 <div className="text-[10px] uppercase font-bold text-slate-400">3. TCP Port 443 Handshake</div>
                 <div className="text-sm font-bold flex items-center gap-1.5">
                   <span className={diagnoseResult.tcpPort443?.status === "CONNECTED" ? "text-emerald-600" : "text-red-500"}>
-                    {diagnoseResult.tcpPort443?.status === "CONNECTED" ? "✓ Connected" : "✕ Blocked/Timeout"}
+                    {diagnoseResult.tcpPort443?.status === "CONNECTED" ? "✓ Connected (Open)" : "✕ Blocked/Timeout"}
                   </span>
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  103.12.205.229:443 ({diagnoseResult.tcpPort443?.latencyMs}ms)
+                  {diagnoseResult.tcpPort443?.host}:443 ({diagnoseResult.tcpPort443?.latencyMs}ms)
                 </div>
               </div>
             </div>
@@ -597,8 +599,8 @@ export default function SmsSettingsPage() {
                 <div className="space-y-1">
                   <div className="font-bold">
                     {balanceResult.success
-                      ? `ADN SMS API Connected! Remaining balance: ${balanceResult.smsBalance?.toLocaleString()} SMS credits.`
-                      : `Balance Check Failed`}
+                      ? `QSMS Gateway Connected! ${balanceResult.apiResponseMessage || "API Credentials Active"}`
+                      : `Gateway Verification`}
                   </div>
                   {!balanceResult.success && (
                     <div className="text-xs text-red-800 dark:text-red-300">
@@ -739,39 +741,25 @@ export default function SmsSettingsPage() {
             <div className="lg:col-span-2 space-y-5 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  ADN SMS API Credentials
+                  QSMS (Qolek SMS) API Credentials
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Connect your ADN SMS Provider account (https://portal.adnsms.com)
+                  Connect your QSMS Gateway account (<a href="https://qsms.com.bd" target="_blank" rel="noreferrer" className="text-blue-600 underline">https://qsms.com.bd</a>)
                 </p>
               </div>
 
-              {/* Server Outbound IP Whitelist Callout */}
-              <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 text-xs space-y-2">
+              {/* QSMS Quick Guidance Callout */}
+              <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 text-xs space-y-2">
                 <div className="flex items-center justify-between font-bold">
-                  <span className="flex items-center gap-1.5 text-blue-900 dark:text-blue-100">
-                    <span>🛡️</span>
-                    <span>Server Outbound IP (For ADN Whitelist)</span>
+                  <span className="flex items-center gap-1.5 text-emerald-900 dark:text-emerald-100">
+                    <span>⚡</span>
+                    <span>QSMS API তথ্য সংগ্রহের নিয়ম:</span>
                   </span>
-                  {serverPublicIp ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(serverPublicIp);
-                        alert(`Server IP (${serverPublicIp}) copied to clipboard! Paste it into ADN SMS portal.`);
-                      }}
-                      className="px-2.5 py-1 rounded bg-[#0D47A1] hover:bg-blue-700 text-white font-mono text-[11px] font-bold cursor-pointer transition-colors shadow-xs flex items-center gap-1"
-                    >
-                      <span>Copy IP: {serverPublicIp}</span>
-                      <span>📋</span>
-                    </button>
-                  ) : (
-                    <span className="text-[11px] font-mono text-slate-500">Detecting server IP...</span>
-                  )}
                 </div>
-                <p className="text-[11px] leading-relaxed text-blue-800 dark:text-blue-300">
-                  ADN SMS গেটওয়ে ব্যবহারের জন্য আপনার সার্ভার আইপি ADN পোর্টালে হোয়াইটলিস্ট থাকতে হয় (অন্যথায় এরর <strong>9998: IP_NOT_WHITELISTED</strong> আসে)।{" "}
-                  <strong>portal.adnsms.com</strong>-এ লগইন করে <strong>API Settings / IP Whitelist</strong>-এ এই আইপিটি যুক্ত করে সেভ করুন।
+                <p className="text-[11px] leading-relaxed text-emerald-900 dark:text-emerald-300">
+                  ১. <strong>qsms.com.bd</strong>-এ আপনার একাউন্টে লগইন করুন।<br />
+                  ২. <strong>API / Developer Hub</strong> সেকশন থেকে আপনার <strong>API Key</strong> এবং <strong>API Secret</strong> কপি করে নিচের বক্সে পেস্ট করুন।<br />
+                  ৩. আপনার অনুমোদিত <strong>Sender ID</strong> (যেমন: <code className="bg-emerald-100 dark:bg-emerald-900/60 px-1 rounded">Imperial IT</code>) বসিয়ে সেভ করুন।
                 </p>
               </div>
 
@@ -779,13 +767,13 @@ export default function SmsSettingsPage() {
                 {/* API Key */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    ADN API Key <span className="text-red-500">*</span>
+                    QSMS API Key <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={settings.apiKey}
                     onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
-                    placeholder="e.g. KEY-xxxxxxxxxxxxxxxx"
+                    placeholder="Enter your QSMS API Key"
                     className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                 </div>
@@ -794,7 +782,7 @@ export default function SmsSettingsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      ADN API Secret <span className="text-red-500">*</span>
+                      QSMS API Secret <span className="text-red-500">*</span>
                     </label>
                     <button
                       type="button"
@@ -808,7 +796,7 @@ export default function SmsSettingsPage() {
                     type={showSecret ? "text" : "password"}
                     value={apiSecretInput}
                     onChange={(e) => setApiSecretInput(e.target.value)}
-                    placeholder={hasExistingSecret ? "•••••••• (Leave blank to keep existing)" : "Enter API Secret"}
+                    placeholder={hasExistingSecret ? "•••••••• (Leave blank to keep existing)" : "Enter QSMS API Secret"}
                     className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   {hasExistingSecret && (
@@ -821,17 +809,17 @@ export default function SmsSettingsPage() {
                 {/* API Domain */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    API Domain URL
+                    QSMS API Base URL
                   </label>
                   <input
                     type="text"
                     value={settings.apiDomain}
                     onChange={(e) => setSettings({ ...settings, apiDomain: e.target.value })}
-                    placeholder="https://portal.adnsms.com"
+                    placeholder="https://api.qsms.com.bd"
                     className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   <span className="text-[10px] text-slate-400 mt-1 block">
-                    Default is <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">https://portal.adnsms.com</code>
+                    Default is <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">https://api.qsms.com.bd</code>
                   </span>
                 </div>
 
@@ -867,19 +855,28 @@ export default function SmsSettingsPage() {
                   </code>
                 </div>
 
-                {/* Campaign Title & Message Type */}
+                {/* Sender ID (sender_id) & Message Type */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Campaign Title
+                      Sender ID (sender_id) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={settings.campaignTitle}
-                      onChange={(e) => setSettings({ ...settings, campaignTitle: e.target.value })}
-                      placeholder="Imperial_IT"
+                      value={settings.senderId || settings.campaignTitle || ""}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          senderId: e.target.value,
+                          campaignTitle: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Imperial IT"
                       className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                     />
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Approved Masking or Non-masking Sender ID on QSMS
+                    </span>
                   </div>
 
                   <div>
@@ -924,7 +921,7 @@ export default function SmsSettingsPage() {
                     <span>Send Test SMS</span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Dispatch an instant test message to your personal mobile to verify ADN Gateway
+                    Dispatch an instant test message to your personal mobile to verify QSMS Gateway
                   </p>
                 </div>
 

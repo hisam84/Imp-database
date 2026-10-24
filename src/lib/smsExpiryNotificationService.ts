@@ -5,9 +5,9 @@ import {
   SmsSettings,
 } from "@/lib/smsSettings";
 import {
-  sendAdnSms,
+  sendQsmsSms,
   normalizeBdPhoneNumber,
-} from "@/lib/adnSmsService";
+} from "@/lib/qsmsService";
 
 import {
   saveSiteSettingsPayload,
@@ -288,16 +288,16 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
 
           for (const recipient of recipientsToDispatch) {
             try {
-              const sendRes = await sendAdnSms({
+              const sendRes = await sendQsmsSms({
                 to: recipient.phone,
                 message: messageBody,
-                requestType: "SINGLE_SMS",
+                senderId: settings.senderId || settings.campaignTitle,
                 messageType: settings.messageType,
-                campaignTitle: settings.campaignTitle,
                 credentials: {
                   apiKey: settings.apiKey,
                   apiSecret: settings.apiSecret,
                   apiDomain: settings.apiDomain,
+                  senderId: settings.senderId || settings.campaignTitle,
                 },
               });
 

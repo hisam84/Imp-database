@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import net from "net";
 import dns from "dns/promises";
-import { getServerOutboundIp, checkAdnBalance } from "@/lib/adnSmsService";
+import { getServerOutboundIp, checkQsmsBalance } from "@/lib/qsmsService";
 import { getSmsSettings } from "@/lib/smsSettings";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const settings = await getSmsSettings();
+  let targetHostname = "api.qsms.com.bd";
+  try {
+    const parsed = new URL(settings.apiDomain);
+    targetHostname = parsed.hostname;
+  } catch {}
+
   const result: any = {
     timestamp: new Date().toISOString(),
     serverOutboundIp: null,
-    dns: { status: "pending", host: "portal.adnsms.com", ip: null, latencyMs: 0 },
-    tcpPort443: { status: "pending", host: "103.12.205.229", port: 443, latencyMs: 0, error: null },
+    dns: { status: "pending", host: targetHostname, ip: null, latencyMs: 0 },
+    tcpPort443: { status: "pending", host: targetHostname, port: 443, latencyMs: 0, error: null },
     gatewayHttp: { status: "pending", statusCode: null, latencyMs: 0, responseSnippet: null, error: null },
     diagnosis: [],
     recommendedAction: null,
@@ -27,26 +34,26 @@ export async function GET(req: NextRequest) {
   // 2. Test DNS Resolution
   const dnsStart = Date.now();
   try {
-    const lookup = await dns.lookup("portal.adnsms.com", { family: 4 });
+    const lookup = await dns.lookup(targetHostname, { family: 4 });
     result.dns = {
       status: "SUCCESS",
-      host: "portal.adnsms.com",
+      host: targetHostname,
       ip: lookup.address,
       latencyMs: Date.now() - dnsStart,
     };
   } catch (dnsErr: any) {
     result.dns = {
       status: "FAILED",
-      host: "portal.adnsms.com",
+      host: targetHostname,
       ip: null,
       latencyMs: Date.now() - dnsStart,
       error: dnsErr?.message || String(dnsErr),
     };
-    result.diagnosis.push("DNS Resolution Failed: The server could not resolve portal.adnsms.com.");
+    result.diagnosis.push(`DNS Resolution Failed: The server could not resolve ${targetHostname}.`);
   }
 
-  // 3. Test Raw TCP Socket Connection to 103.12.205.229:443
-  const targetIp = result.dns.ip || "103.12.205.229";
+  // 3. Test Raw TCP Socket Connection to targetHostname:443
+  const targetIp = result.dns.ip || "163.227.239.84";
   const tcpStart = Date.now();
   await new Promise<void>((resolve) => {
     const socket = net.connect(443, targetIp);
@@ -70,9 +77,9 @@ export async function GET(req: NextRequest) {
         host: targetIp,
         port: 443,
         latencyMs: Date.now() - tcpStart,
-        error: "TCP connection timed out after 6 seconds. Firewall dropped packets.",
+        error: "TCP connection timed out after 6 seconds.",
       };
-      result.diagnosis.push("TCP Handshake Timed Out: Packets to 103.12.205.229:443 are being dropped by ADN Telecom's firewall or your VPS outbound firewall.");
+      result.diagnosis.push(`TCP Handshake Timed Out: Packets to ${targetIp}:443 were dropped.`);
       socket.destroy();
       resolve();
     });
@@ -91,14 +98,14 @@ export async function GET(req: NextRequest) {
     });
   });
 
-  // 4. Test ADN SMS Gateway HTTP POST (Balance Check API)
-  const settings = await getSmsSettings();
+  // 4. Test QSMS Gateway HTTP Connection / Credentials
   const httpStart = Date.now();
   try {
-    const balRes = await checkAdnBalance({
-      apiKey: settings.apiKey || "DIAG_TEST_KEY",
-      apiSecret: settings.apiSecret || "DIAG_TEST_SECRET",
+    const balRes = await checkQsmsBalance({
+      apiKey: settings.apiKey,
+      apiSecret: settings.apiSecret,
       apiDomain: settings.apiDomain,
+      senderId: settings.senderId,
     });
 
     result.gatewayHttp = {
@@ -111,14 +118,14 @@ export async function GET(req: NextRequest) {
     };
 
     if (balRes.success) {
-      result.diagnosis.push(`Gateway Connected Successfully! Remaining balance: ${balRes.smsBalance} SMS.`);
-      result.recommendedAction = "All checks passed! ADN SMS is fully functional.";
+      result.diagnosis.push("Gateway Connected Successfully! QSMS API is reachable and active.");
+      result.recommendedAction = "All checks passed! QSMS Gateway is ready to send messages.";
     } else {
-      result.diagnosis.push(`Gateway returned error: ${balRes.error}`);
-      if (String(balRes.apiResponseCode) === "9998" || String(balRes.error).includes("IP_NOT_WHITELISTED")) {
-        result.recommendedAction = `Your server IP (${result.serverOutboundIp}) is NOT whitelisted in the ADN SMS portal. Please log in to portal.adnsms.com > API Settings > IP Whitelist and add ${result.serverOutboundIp}.`;
-      } else if (String(balRes.apiResponseCode) === "3001" || String(balRes.apiResponseCode) === "9999") {
-        result.recommendedAction = "Network is reachable! Please verify your ADN SMS API Key and API Secret are correct.";
+      result.diagnosis.push(`Gateway returned: ${balRes.error}`);
+      if (balRes.error?.includes("not configured")) {
+        result.recommendedAction = "Please enter your QSMS API Key and API Secret in SMS Settings above.";
+      } else if (balRes.error?.includes("Invalid API Key")) {
+        result.recommendedAction = "Network is reachable! Please check and re-enter your valid QSMS API Key and API Secret.";
       }
     }
   } catch (httpErr: any) {
@@ -131,8 +138,8 @@ export async function GET(req: NextRequest) {
   }
 
   // Final Action Recommendation based on findings
-  if (result.tcpPort443.status === "TIMED_OUT") {
-    result.recommendedAction = `CRITICAL: Your VPS (IP: ${result.serverOutboundIp}) cannot reach ADN SMS IP (103.12.205.229:443). ADN Telecom's firewall is dropping the connection. Either: 1) You whitelisted your personal PC's IP instead of your VPS IP (${result.serverOutboundIp}), or 2) ADN firewall takes 15-30 minutes to propagate new IPs, or 3) ADN Telecom requires contacting their support (support@adnsms.com) to allow overseas/VPS IPs.`;
+  if (result.tcpPort443.status === "CONNECTED" && !result.recommendedAction) {
+    result.recommendedAction = "Network & TCP Port 443 connection to QSMS is fully OPEN!";
   }
 
   return NextResponse.json({

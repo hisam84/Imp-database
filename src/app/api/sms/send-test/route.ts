@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendAdnSms, normalizeBdPhoneNumber } from "@/lib/adnSmsService";
+import { sendQsmsSms, normalizeBdPhoneNumber } from "@/lib/qsmsService";
 import { getSmsSettings } from "@/lib/smsSettings";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { phone, message, apiKey, apiSecret, apiDomain, campaignTitle } = body;
+    const { phone, message, apiKey, apiSecret, apiDomain, senderId, campaignTitle } = body;
 
     if (!phone || !phone.trim()) {
       return NextResponse.json(
@@ -32,11 +32,11 @@ export async function POST(req: NextRequest) {
     const activeApiKey = apiKey && !apiKey.includes("••••") ? apiKey.trim() : settings.apiKey;
     const activeApiSecret = apiSecret && !apiSecret.includes("••••") ? apiSecret.trim() : settings.apiSecret;
     const activeApiDomain = apiDomain && apiDomain.trim() ? apiDomain.trim() : settings.apiDomain;
-    const activeCampaign = campaignTitle && campaignTitle.trim() ? campaignTitle.trim() : settings.campaignTitle;
+    const activeSenderId = (senderId && senderId.trim()) || (campaignTitle && campaignTitle.trim()) || settings.senderId || "Imperial IT";
 
     if (!activeApiKey || !activeApiSecret) {
       return NextResponse.json(
-        { success: false, error: "ADN SMS API Key and Secret are not configured." },
+        { success: false, error: "QSMS API Key and Secret are not configured." },
         { status: 400 }
       );
     }
@@ -44,18 +44,18 @@ export async function POST(req: NextRequest) {
     const testMessage =
       message && message.trim()
         ? message.trim()
-        : `[Imperial IT] এটি একটি টেস্ট এসএমএস। ADN SMS গেটওয়ে সফলভাবে কনফিগার করা হয়েছে। তারিখ: ${new Date().toLocaleDateString("en-GB")}`;
+        : `[Imperial IT] এটি একটি টেস্ট এসএমএস। QSMS গেটওয়ে সফলভাবে কনফিগার করা হয়েছে। তারিখ: ${new Date().toLocaleDateString("en-GB")}`;
 
-    const res = await sendAdnSms({
+    const res = await sendQsmsSms({
       to: normalized,
       message: testMessage,
-      requestType: "SINGLE_SMS",
+      senderId: activeSenderId,
       messageType: "AUTO",
-      campaignTitle: activeCampaign,
       credentials: {
         apiKey: activeApiKey,
         apiSecret: activeApiSecret,
         apiDomain: activeApiDomain,
+        senderId: activeSenderId,
       },
     });
 
