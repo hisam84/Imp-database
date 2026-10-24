@@ -3,6 +3,10 @@ import {
   checkAndSendExpiryAlerts,
   clearPersistedExpiryAlerts,
 } from "@/lib/expiryNotificationService";
+import {
+  checkAndSendSmsExpiryAlerts,
+  clearPersistedSmsExpiryAlerts,
+} from "@/lib/smsExpiryNotificationService";
 
 export const dynamic = "force-dynamic";
 
@@ -26,15 +30,28 @@ export async function GET(req: NextRequest) {
 
     if (reset) {
       await clearPersistedExpiryAlerts();
+      await clearPersistedSmsExpiryAlerts();
     }
 
-    const result = await checkAndSendExpiryAlerts({ force });
+    // Run email alerts
+    const emailResult = await checkAndSendExpiryAlerts({ force });
+
+    // Run SMS alerts
+    const smsResult = await checkAndSendSmsExpiryAlerts({ force });
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       forced: force,
-      ...result,
+      emails: emailResult,
+      sms: {
+        checkedWebsites: smsResult.checkedWebsites,
+        smsSent: smsResult.smsSent,
+        smsFailed: smsResult.smsFailed,
+        skippedAlreadySent: smsResult.skippedAlreadySent,
+        skippedNoPhone: smsResult.skippedNoPhone,
+        errors: smsResult.errors,
+      },
     });
   } catch (error: any) {
     console.error("Cron expiry alert processing error:", error);

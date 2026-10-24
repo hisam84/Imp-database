@@ -15,3 +15,4 @@ out
 eternal-reserve*.json
 service-account*.json
 backups/
+*.zip
