@@ -1,4 +1,7 @@
-import { prisma } from "@/lib/prisma";
+import {
+  saveSiteSettingsPayload,
+  loadSiteSettingsPayload,
+} from "./siteSettingsStorage";
 
 export interface RecipientTargetsConfig {
   contact1: boolean;
@@ -54,12 +57,10 @@ export const SMS_SETTINGS_KEY = "adn_sms_settings";
  */
 export async function getSmsSettings(): Promise<SmsSettings> {
   try {
-    const record = await (prisma as any).siteSettings.findUnique({
-      where: { id: SMS_SETTINGS_KEY },
-    });
+    const rawPayload = await loadSiteSettingsPayload(SMS_SETTINGS_KEY);
 
-    if (record?.adminEmail) {
-      const parsed = JSON.parse(record.adminEmail);
+    if (rawPayload) {
+      const parsed = JSON.parse(rawPayload);
 
       // Parse milestones safely
       let milestones = DEFAULT_SMS_SETTINGS.expiryDaysMilestones;
@@ -137,17 +138,7 @@ export async function saveSmsSettings(settings: Partial<SmsSettings>): Promise<S
   };
 
   const payload = JSON.stringify(updated);
-  await (prisma as any).siteSettings.upsert({
-    where: { id: SMS_SETTINGS_KEY },
-    create: {
-      id: SMS_SETTINGS_KEY,
-      password: "adn_sms_config",
-      adminEmail: payload,
-    },
-    update: {
-      adminEmail: payload,
-    },
-  });
+  await saveSiteSettingsPayload(SMS_SETTINGS_KEY, payload, "adn_sms_config");
 
   return updated;
 }

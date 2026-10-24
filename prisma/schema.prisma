@@ -67,9 +67,9 @@ model CustomFieldDefinition {
 
 model SiteSettings {
   id           String    @id @default("global")
-  password     String
-  adminEmail   String?
-  otpCode      String?
+  password     String    @db.Text
+  adminEmail   String?   @db.LongText
+  otpCode      String?   @db.Text
   otpExpiresAt DateTime?
 }
 

@@ -9,6 +9,11 @@ import {
   normalizeBdPhoneNumber,
 } from "@/lib/adnSmsService";
 
+import {
+  saveSiteSettingsPayload,
+  loadSiteSettingsPayload,
+} from "./siteSettingsStorage";
+
 export interface SmsLogEntry {
   id: string;
   timestamp: string;
@@ -49,11 +54,9 @@ const sentSmsAlertsMemory = new Set<string>();
  */
 async function loadPersistedSmsAlerts(): Promise<Set<string>> {
   try {
-    const record = await (prisma as any).siteSettings.findUnique({
-      where: { id: SMS_ALERTS_KEY },
-    });
-    if (record?.adminEmail) {
-      const data = JSON.parse(record.adminEmail);
+    const raw = await loadSiteSettingsPayload(SMS_ALERTS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
       if (Array.isArray(data.keys)) {
         return new Set(data.keys);
       }
@@ -73,18 +76,7 @@ async function savePersistedSmsAlerts(keys: Set<string>) {
       keys: Array.from(keys),
       updatedAt: new Date().toISOString(),
     });
-
-    await (prisma as any).siteSettings.upsert({
-      where: { id: SMS_ALERTS_KEY },
-      create: {
-        id: SMS_ALERTS_KEY,
-        password: "sms_alerts_cache",
-        adminEmail: payload,
-      },
-      update: {
-        adminEmail: payload,
-      },
-    });
+    await saveSiteSettingsPayload(SMS_ALERTS_KEY, payload, "sms_alerts_cache");
   } catch (err: any) {
     console.error("Could not save persisted SMS alerts:", err?.message);
   }
@@ -95,11 +87,9 @@ async function savePersistedSmsAlerts(keys: Set<string>) {
  */
 export async function getRecentSmsLogs(): Promise<SmsLogEntry[]> {
   try {
-    const record = await (prisma as any).siteSettings.findUnique({
-      where: { id: RECENT_SMS_LOGS_KEY },
-    });
-    if (record?.adminEmail) {
-      const data = JSON.parse(record.adminEmail);
+    const raw = await loadSiteSettingsPayload(RECENT_SMS_LOGS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
       if (Array.isArray(data.logs)) {
         return data.logs;
       }
@@ -124,17 +114,7 @@ async function appendRecentSmsLogs(newEntries: SmsLogEntry[]) {
       updatedAt: new Date().toISOString(),
     });
 
-    await (prisma as any).siteSettings.upsert({
-      where: { id: RECENT_SMS_LOGS_KEY },
-      create: {
-        id: RECENT_SMS_LOGS_KEY,
-        password: "recent_sms_logs",
-        adminEmail: payload,
-      },
-      update: {
-        adminEmail: payload,
-      },
-    });
+    await saveSiteSettingsPayload(RECENT_SMS_LOGS_KEY, payload, "recent_sms_logs");
   } catch (err: any) {
     console.error("Could not append recent SMS logs:", err?.message);
   }
@@ -146,30 +126,18 @@ async function appendRecentSmsLogs(newEntries: SmsLogEntry[]) {
 export async function clearPersistedSmsExpiryAlerts(options?: { clearLogs?: boolean }) {
   sentSmsAlertsMemory.clear();
   try {
-    await (prisma as any).siteSettings.upsert({
-      where: { id: SMS_ALERTS_KEY },
-      create: {
-        id: SMS_ALERTS_KEY,
-        password: "sms_alerts_cache",
-        adminEmail: JSON.stringify({ keys: [], updatedAt: new Date().toISOString() }),
-      },
-      update: {
-        adminEmail: JSON.stringify({ keys: [], updatedAt: new Date().toISOString() }),
-      },
-    });
+    await saveSiteSettingsPayload(
+      SMS_ALERTS_KEY,
+      JSON.stringify({ keys: [], updatedAt: new Date().toISOString() }),
+      "sms_alerts_cache"
+    );
 
     if (options?.clearLogs) {
-      await (prisma as any).siteSettings.upsert({
-        where: { id: RECENT_SMS_LOGS_KEY },
-        create: {
-          id: RECENT_SMS_LOGS_KEY,
-          password: "recent_sms_logs",
-          adminEmail: JSON.stringify({ logs: [], updatedAt: new Date().toISOString() }),
-        },
-        update: {
-          adminEmail: JSON.stringify({ logs: [], updatedAt: new Date().toISOString() }),
-        },
-      });
+      await saveSiteSettingsPayload(
+        RECENT_SMS_LOGS_KEY,
+        JSON.stringify({ logs: [], updatedAt: new Date().toISOString() }),
+        "recent_sms_logs"
+      );
     }
   } catch (err: any) {
     console.error("Could not clear persisted SMS expiry alerts:", err?.message);
