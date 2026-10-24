@@ -68,6 +68,8 @@ export default function SmsSettingsPage() {
   } | null>(null);
 
   const [serverPublicIp, setServerPublicIp] = useState<string>("");
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diagnoseResult, setDiagnoseResult] = useState<any>(null);
 
   // Load Settings on Mount
   useEffect(() => {
@@ -214,6 +216,29 @@ export default function SmsSettingsPage() {
       setTestResult({ success: false, error: err?.message || "Failed to send test SMS" });
     } finally {
       setSendingTest(false);
+    }
+  }
+
+  async function handleRunDiagnosis() {
+    setDiagnosing(true);
+    setDiagnoseResult(null);
+    try {
+      const res = await fetch("/api/sms/diagnose");
+      const raw = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(`Server returned HTTP ${res.status}: ${raw.slice(0, 100)}`);
+      }
+      setDiagnoseResult(data);
+      if (data.serverOutboundIp) {
+        setServerPublicIp(data.serverOutboundIp);
+      }
+    } catch (err: any) {
+      setDiagnoseResult({ success: false, error: err?.message || "Failed to run network diagnosis" });
+    } finally {
+      setDiagnosing(false);
     }
   }
 
@@ -438,21 +463,37 @@ export default function SmsSettingsPage() {
                 </h3>
               </div>
             </div>
-            <button
-              onClick={handleCheckBalance}
-              disabled={checkingBalance}
-              className="px-3 py-1.5 bg-[#0D47A1]/10 hover:bg-[#0D47A1]/20 text-[#0D47A1] dark:text-[#90CAF9] border border-[#0D47A1]/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-              title="Query live balance from ADN SMS API"
-            >
-              {checkingBalance ? (
-                <span className="w-3.5 h-3.5 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              )}
-              <span>Check</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleRunDiagnosis}
+                disabled={diagnosing}
+                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Diagnose DNS, TCP port 443, and Gateway reachability"
+              >
+                {diagnosing ? (
+                  <span className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span>🔍</span>
+                )}
+                <span>Diagnose</span>
+              </button>
+
+              <button
+                onClick={handleCheckBalance}
+                disabled={checkingBalance}
+                className="px-3 py-1.5 bg-[#0D47A1]/10 hover:bg-[#0D47A1]/20 text-[#0D47A1] dark:text-[#90CAF9] border border-[#0D47A1]/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Query live balance from ADN SMS API"
+              >
+                {checkingBalance ? (
+                  <span className="w-3.5 h-3.5 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                )}
+                <span>Check</span>
+              </button>
+            </div>
           </div>
 
           {/* Quick Manual Scan Trigger Card */}
@@ -481,6 +522,64 @@ export default function SmsSettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* Network & Gateway Diagnosis Result Box */}
+        {diagnoseResult && (
+          <div className="p-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-md text-xs space-y-3 animate-in fade-in">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+              <span className="font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                <span>🔍</span>
+                <span>ADN SMS Network & Gateway Diagnostics</span>
+              </span>
+              <button onClick={() => setDiagnoseResult(null)} className="opacity-60 hover:opacity-100 p-1">✕</button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                <div className="text-[10px] uppercase font-bold text-slate-400">1. Server Outbound IP</div>
+                <div className="text-sm font-bold text-blue-600 dark:text-blue-400 select-all">
+                  {diagnoseResult.serverOutboundIp || "Unknown"}
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  (এই আইপিটি ADN পোর্টালে যুক্ত থাকতে হবে)
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                <div className="text-[10px] uppercase font-bold text-slate-400">2. DNS Resolution</div>
+                <div className="text-sm font-bold flex items-center gap-1.5">
+                  <span className={diagnoseResult.dns?.status === "SUCCESS" ? "text-emerald-600" : "text-red-500"}>
+                    {diagnoseResult.dns?.status === "SUCCESS" ? "✓" : "✕"} {diagnoseResult.dns?.ip || "Failed"}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  portal.adnsms.com ({diagnoseResult.dns?.latencyMs}ms)
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                <div className="text-[10px] uppercase font-bold text-slate-400">3. TCP Port 443 Handshake</div>
+                <div className="text-sm font-bold flex items-center gap-1.5">
+                  <span className={diagnoseResult.tcpPort443?.status === "CONNECTED" ? "text-emerald-600" : "text-red-500"}>
+                    {diagnoseResult.tcpPort443?.status === "CONNECTED" ? "✓ Connected" : "✕ Blocked/Timeout"}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  103.12.205.229:443 ({diagnoseResult.tcpPort443?.latencyMs}ms)
+                </div>
+              </div>
+            </div>
+
+            {diagnoseResult.recommendedAction && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200">
+                <span className="font-bold block mb-1">📌 সুপারিশকৃত সমাধান (Recommended Action):</span>
+                <p className="text-[11px] leading-relaxed">
+                  {diagnoseResult.recommendedAction}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Balance Result Feedback */}
         {balanceResult && (

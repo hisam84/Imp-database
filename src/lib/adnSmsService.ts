@@ -13,6 +13,10 @@
 import https from "https";
 import http from "http";
 import { URL } from "url";
+import { execFile } from "child_process";
+import { promisify } from "util";
+
+const execFileAsync = promisify(execFile);
 
 export interface AdnCredentials {
   apiKey: string;
@@ -182,7 +186,7 @@ export function calculateSmsParts(text: string): {
  * - IPv4 forced (family: 4)
  * - Proper User-Agent header
  */
-async function callAdnHttp(
+async function callAdnViaNode(
   endpointUrl: string,
   formData: URLSearchParams
 ): Promise<{ statusCode: number; body: string }> {
@@ -200,9 +204,8 @@ async function callAdnHttp(
         port: parsedUrl.port || (isHttps ? 443 : 80),
         path: parsedUrl.pathname + parsedUrl.search,
         method: "POST",
-        family: 4, // Force IPv4 to prevent IPv6 hanging
-        rejectUnauthorized: false, // Critical: matches CURLOPT_SSL_VERIFYPEER = FALSE from ADN SMS PHP sample
-        timeout: 30000,
+        rejectUnauthorized: false,
+        timeout: 15000,
         headers: {
           "Accept": "application/json",
           "Format": "application/json",
@@ -228,7 +231,7 @@ async function callAdnHttp(
 
       req.on("timeout", () => {
         req.destroy();
-        reject(new Error("Connection to ADN SMS timed out (30s). Please check your internet or firewall."));
+        reject(new Error("Node HTTPS connection timed out after 15s"));
       });
 
       req.on("error", (err) => {
@@ -241,6 +244,57 @@ async function callAdnHttp(
       reject(err);
     }
   });
+}
+
+/**
+ * Fallback client using native cURL CLI (matches official PHP cURL sample behavior)
+ */
+async function callAdnViaCurl(
+  endpointUrl: string,
+  formData: URLSearchParams
+): Promise<{ statusCode: number; body: string }> {
+  const postData = formData.toString();
+  const args = [
+    "-s",
+    "-k", // CURLOPT_SSL_VERIFYPEER = FALSE
+    "-4", // force IPv4
+    "--max-time", "20",
+    "--connect-timeout", "10",
+    "-X", "POST",
+    endpointUrl,
+    "-H", "Accept: application/json",
+    "-H", "Format: application/json",
+    "-H", "Content-Type: application/x-www-form-urlencoded",
+    "-d", postData,
+    "-w", "\n%{http_code}",
+  ];
+
+  const { stdout } = await execFileAsync("curl", args, { timeout: 25000 });
+  const lines = stdout.trim().split("\n");
+  const statusCode = parseInt(lines[lines.length - 1], 10) || 200;
+  const body = lines.slice(0, lines.length - 1).join("\n").trim();
+  return { statusCode, body };
+}
+
+/**
+ * Dual-engine HTTP caller: Attempts native Node HTTPS first, then falls back to cURL CLI.
+ */
+async function callAdnHttp(
+  endpointUrl: string,
+  formData: URLSearchParams
+): Promise<{ statusCode: number; body: string }> {
+  try {
+    return await callAdnViaNode(endpointUrl, formData);
+  } catch (nodeErr: any) {
+    try {
+      return await callAdnViaCurl(endpointUrl, formData);
+    } catch (curlErr: any) {
+      throw new Error(
+        `Connection to ADN SMS timed out (30s). Both Node HTTPS and cURL failed (${nodeErr?.message || "timeout"}; ${curlErr?.message || "timeout"}). ` +
+        `This indicates that packets to 103.12.205.229:443 are being dropped by ADN Telecom's firewall or your VPS firewall.`
+      );
+    }
+  }
 }
 
 /**
