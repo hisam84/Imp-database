@@ -8,9 +8,10 @@ import {
   DEFAULT_SMS_SETTINGS,
   DEFAULT_SMS_TEMPLATE,
   renderSmsTemplate,
-} from "@/lib/smsSettings";
-import { calculateSmsParts, normalizeBdPhoneNumber } from "@/lib/adnSmsService";
-import { SmsLogEntry } from "@/lib/smsExpiryNotificationService";
+  calculateSmsParts,
+  normalizeBdPhoneNumber,
+  type SmsLogEntry,
+} from "@/lib/smsShared";
 
 export default function SmsSettingsPage() {
   const { isSuperAdmin } = useUserSession();

@@ -2,55 +2,23 @@ import {
   saveSiteSettingsPayload,
   loadSiteSettingsPayload,
 } from "./siteSettingsStorage";
+import {
+  type RecipientTargetsConfig,
+  type SmsSettings,
+  DEFAULT_SMS_TEMPLATE,
+  DEFAULT_SMS_SETTINGS,
+  SMS_SETTINGS_KEY,
+  renderSmsTemplate,
+} from "./smsShared";
 
-export interface RecipientTargetsConfig {
-  contact1: boolean;
-  contact2: boolean;
-  inChargeTeacher: boolean;
-  btclMobile: boolean;
-}
-
-export interface SmsSettings {
-  enabled: boolean;
-  apiKey: string;
-  apiSecret: string;
-  apiDomain: string;
-  campaignTitle: string;
-  expiryDaysMilestones: number[];
-  recipientTargets: RecipientTargetsConfig;
-  sendMode: "first_available" | "all_selected";
-  template: string;
-  companyPhone: string;
-  companyName: string;
-  adminCopyPhone?: string;
-  messageType: "AUTO" | "TEXT" | "UNICODE";
-}
-
-export const DEFAULT_SMS_TEMPLATE =
-  "শ্রদ্ধেয় গ্রাহক, আপনার {instituteName} এর ডোমেইন ({domain}) আগামী {expireDate} তারিখে এক্সপায়ার হতে যাচ্ছে (বাকি {daysRemaining} দিন)। সেবা সচল রাখতে দ্রুত নবায়ন করুন। {companyName} হেল্পলাইন: {companyPhone}";
-
-export const DEFAULT_SMS_SETTINGS: SmsSettings = {
-  enabled: true,
-  apiKey: "",
-  apiSecret: "",
-  apiDomain: "https://portal.adnsms.com",
-  campaignTitle: "Imperial_IT",
-  expiryDaysMilestones: [30, 15, 7, 3, 1],
-  recipientTargets: {
-    contact1: true,
-    contact2: false,
-    inChargeTeacher: true,
-    btclMobile: false,
-  },
-  sendMode: "first_available",
-  template: DEFAULT_SMS_TEMPLATE,
-  companyPhone: "01711223344",
-  companyName: "Imperial IT",
-  adminCopyPhone: "",
-  messageType: "AUTO",
+export {
+  type RecipientTargetsConfig,
+  type SmsSettings,
+  DEFAULT_SMS_TEMPLATE,
+  DEFAULT_SMS_SETTINGS,
+  SMS_SETTINGS_KEY,
+  renderSmsTemplate,
 };
-
-export const SMS_SETTINGS_KEY = "adn_sms_settings";
 
 /**
  * Loads current SMS Settings from SiteSettings table.
@@ -143,51 +111,3 @@ export async function saveSmsSettings(settings: Partial<SmsSettings>): Promise<S
   return updated;
 }
 
-/**
- * Replaces template placeholders with institution & domain information.
- */
-export function renderSmsTemplate(
-  template: string,
-  variables: {
-    instituteName?: string | null;
-    instituteNameBangla?: string | null;
-    domain?: string | null;
-    expireDate?: string | Date | null;
-    daysRemaining?: number | string | null;
-    contactPerson?: string | null;
-    companyName?: string | null;
-    companyPhone?: string | null;
-  }
-): string {
-  let rendered = template || DEFAULT_SMS_TEMPLATE;
-
-  // Format expire date nicely (e.g. 15-Nov-2026 or 15/11/2026)
-  let formattedDate = "";
-  if (variables.expireDate) {
-    const d = new Date(variables.expireDate);
-    if (!isNaN(d.getTime())) {
-      const day = String(d.getDate()).padStart(2, "0");
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const month = monthNames[d.getMonth()];
-      const year = d.getFullYear();
-      formattedDate = `${day}-${month}-${year}`;
-    }
-  }
-
-  const map: { [key: string]: string } = {
-    "{instituteName}": variables.instituteName || variables.instituteNameBangla || "প্রতিষ্ঠান",
-    "{instituteNameBangla}": variables.instituteNameBangla || variables.instituteName || "প্রতিষ্ঠান",
-    "{domain}": variables.domain || "ডোমেইন",
-    "{expireDate}": formattedDate || "শীঘ্রই",
-    "{daysRemaining}": variables.daysRemaining !== undefined && variables.daysRemaining !== null ? String(variables.daysRemaining) : "০",
-    "{contactPerson}": variables.contactPerson || "সম্মানিত গ্রাহক",
-    "{companyName}": variables.companyName || "Imperial IT",
-    "{companyPhone}": variables.companyPhone || "",
-  };
-
-  for (const [key, val] of Object.entries(map)) {
-    rendered = rendered.split(key).join(val);
-  }
-
-  return rendered.trim();
-}

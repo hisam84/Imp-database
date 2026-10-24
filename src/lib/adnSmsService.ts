@@ -15,169 +15,31 @@ import http from "http";
 import { URL } from "url";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import {
+  type AdnCredentials,
+  type SendSmsOptions,
+  type AdnSendResponse,
+  type AdnBalanceResponse,
+  type AdnSmsStatusResponse,
+  normalizeBdPhoneNumber,
+  isUnicodeMessage,
+  calculateSmsParts,
+} from "./smsShared";
+
+export {
+  type AdnCredentials,
+  type SendSmsOptions,
+  type AdnSendResponse,
+  type AdnBalanceResponse,
+  type AdnSmsStatusResponse,
+  normalizeBdPhoneNumber,
+  isUnicodeMessage,
+  calculateSmsParts,
+};
 
 const execFileAsync = promisify(execFile);
 
-export interface AdnCredentials {
-  apiKey: string;
-  apiSecret: string;
-  apiDomain?: string;
-}
-
-export interface SendSmsOptions {
-  to: string;
-  message: string;
-  requestType?: "SINGLE_SMS" | "OTP";
-  messageType?: "AUTO" | "TEXT" | "UNICODE";
-  campaignTitle?: string;
-  credentials?: AdnCredentials;
-}
-
-export interface AdnSendResponse {
-  success: boolean;
-  requestType?: string;
-  campaignUid?: string | null;
-  smsUid?: string | null;
-  invalidNumbers?: string[];
-  apiResponseCode?: number;
-  apiResponseMessage?: string;
-  error?: string;
-  rawResponse?: any;
-}
-
-export interface AdnBalanceResponse {
-  success: boolean;
-  smsBalance?: number;
-  apiResponseCode?: number;
-  apiResponseMessage?: string;
-  error?: string;
-  rawResponse?: any;
-}
-
-export interface AdnSmsStatusResponse {
-  success: boolean;
-  smsUid?: string;
-  recipient?: string;
-  status?: string;
-  quantity?: number;
-  error?: string;
-  rawResponse?: any;
-}
-
 const DEFAULT_ADN_DOMAIN = "https://portal.adnsms.com";
-
-/**
- * Normalizes a Bangladeshi mobile phone number into 13-digit format (8801XXXXXXXXX)
- * or 11-digit (01XXXXXXXXX). ADN SMS accepts both, but 8801XXXXXXXXX is standard.
- */
-export function normalizeBdPhoneNumber(input: string | null | undefined): string | null {
-  if (!input) return null;
-
-  // Remove whitespace, dashes, parens, and leading plus
-  let cleaned = input.trim().replace(/[\s\-\(\)\+]/g, "");
-
-  // If Bengali digits are provided, convert to English digits
-  const banglaDigits: { [key: string]: string } = {
-    "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
-    "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9"
-  };
-  cleaned = cleaned.replace(/[০-৯]/g, (char) => banglaDigits[char] || char);
-
-  // If starts with 8801... and length is 13
-  if (/^8801[3-9]\d{8}$/.test(cleaned)) {
-    return cleaned;
-  }
-
-  // If starts with 01... and length is 11, add 88 prefix
-  if (/^01[3-9]\d{8}$/.test(cleaned)) {
-    return `88${cleaned}`;
-  }
-
-  // If starts with 1... and length is 10 (without leading 0)
-  if (/^1[3-9]\d{8}$/.test(cleaned)) {
-    return `880${cleaned}`;
-  }
-
-  // Fallback: if strictly 11 digits starting with 01
-  if (/^01\d{9}$/.test(cleaned)) {
-    return `88${cleaned}`;
-  }
-
-  return null;
-}
-
-/**
- * Detects whether a message contains characters that require UNICODE encoding (e.g. Bangla script).
- */
-export function isUnicodeMessage(text: string): boolean {
-  return /[^\u0000-\u007F]/.test(text);
-}
-
-/**
- * Calculates characters count and SMS segments based on GSM vs Unicode rules.
- * Standard GSM: 160 chars for 1 SMS, then 153 chars/segment for multi-part.
- * Unicode (Bangla): 70 chars for 1 SMS, then 67 chars/segment for multi-part.
- */
-export function calculateSmsParts(text: string): {
-  charCount: number;
-  isUnicode: boolean;
-  smsCount: number;
-  charsRemainingInCurrentPart: number;
-  maxPerPart: number;
-} {
-  const charCount = text ? text.length : 0;
-  const isUnicode = isUnicodeMessage(text);
-
-  if (charCount === 0) {
-    return {
-      charCount: 0,
-      isUnicode,
-      smsCount: 0,
-      charsRemainingInCurrentPart: isUnicode ? 70 : 160,
-      maxPerPart: isUnicode ? 70 : 160,
-    };
-  }
-
-  if (isUnicode) {
-    if (charCount <= 70) {
-      return {
-        charCount,
-        isUnicode: true,
-        smsCount: 1,
-        charsRemainingInCurrentPart: 70 - charCount,
-        maxPerPart: 70,
-      };
-    }
-    const smsCount = Math.ceil(charCount / 67);
-    const charsRemainingInCurrentPart = smsCount * 67 - charCount;
-    return {
-      charCount,
-      isUnicode: true,
-      smsCount,
-      charsRemainingInCurrentPart,
-      maxPerPart: 67,
-    };
-  } else {
-    if (charCount <= 160) {
-      return {
-        charCount,
-        isUnicode: false,
-        smsCount: 1,
-        charsRemainingInCurrentPart: 160 - charCount,
-        maxPerPart: 160,
-      };
-    }
-    const smsCount = Math.ceil(charCount / 153);
-    const charsRemainingInCurrentPart = smsCount * 153 - charCount;
-    return {
-      charCount,
-      isUnicode: false,
-      smsCount,
-      charsRemainingInCurrentPart,
-      maxPerPart: 153,
-    };
-  }
-}
 
 /**
  * Robust HTTP client matching the official ADN SMS PHP cURL specification:

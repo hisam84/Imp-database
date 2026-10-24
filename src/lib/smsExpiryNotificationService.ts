@@ -14,23 +14,11 @@ import {
   loadSiteSettingsPayload,
 } from "./siteSettingsStorage";
 
-export interface SmsLogEntry {
-  id: string;
-  timestamp: string;
-  institutionId?: string;
-  institutionName: string;
-  domain?: string | null;
-  recipientPhone: string;
-  recipientLabel: string;
-  milestoneDays: number;
-  daysRemaining: number;
-  messageText: string;
-  status: "SUCCESS" | "FAILED" | "INCOMING";
-  smsUid?: string | null;
-  apiResponseCode?: number;
-  apiResponseMessage?: string;
-  error?: string | null;
-}
+import {
+  type SmsLogEntry,
+} from "./smsShared";
+
+export type { SmsLogEntry };
 
 export interface SmsExpiryCheckResult {
   checkedWebsites: number;
