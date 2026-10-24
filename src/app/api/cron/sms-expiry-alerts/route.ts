@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
-    const isSiteAuth = req.cookies.get("site-auth")?.value === "true";
+    const siteAuthVal = req.cookies.get("site-auth")?.value;
+    const isSiteAuth = !!siteAuthVal && siteAuthVal !== "false";
 
     // Allow execution if:
     // 1. Cron secret matches Bearer header

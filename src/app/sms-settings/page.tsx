@@ -207,8 +207,28 @@ export default function SmsSettingsPage() {
     setScanningNow(true);
     setScanResult(null);
     try {
-      const res = await fetch("/api/cron/sms-expiry-alerts?force=true", { method: "POST" });
-      const data = await res.json();
+      // 1. Try dedicated dashboard scan route first
+      let res = await fetch("/api/sms/scan?force=true", { method: "POST" });
+      if (res.status === 404) {
+        // Fallback to cron endpoint if scan route not yet cached
+        res = await fetch("/api/cron/sms-expiry-alerts?force=true", { method: "POST" });
+      }
+
+      const rawText = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(
+          `Server returned HTTP ${res.status} (${res.statusText || "HTML"}). ` +
+          `If you just pulled the latest code on your VPS, please run 'npm run build' and restart your Next.js process (e.g. pm2 restart).`
+        );
+      }
+
+      if (!res.ok && !data.errors) {
+        throw new Error(data.error || `HTTP ${res.status}: Scan failed`);
+      }
+
       setScanResult(data);
       fetchLogs();
     } catch (err: any) {
@@ -476,7 +496,7 @@ export default function SmsSettingsPage() {
             }`}
           >
             <div className="flex items-center justify-between font-bold">
-              <span>Expiry Scan Completed</span>
+              <span>{scanResult.success ? "✓ Expiry Scan Completed" : "✕ Expiry Scan Notice"}</span>
               <button onClick={() => setScanResult(null)} className="opacity-60 hover:opacity-100">✕</button>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono">
@@ -636,7 +656,10 @@ export default function SmsSettingsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const url = typeof window !== "undefined" ? `${window.location.origin}/api/sms/callback` : "/api/sms/callback";
+                        const url =
+                          typeof window !== "undefined"
+                            ? `${window.location.origin}${window.location.pathname.startsWith("/database") ? "/database" : ""}/api/sms/callback`
+                            : "https://hisam.beepsystems.com.bd/database/api/sms/callback";
                         navigator.clipboard.writeText(url);
                         alert("Callback URL copied to clipboard: " + url);
                       }}
@@ -649,7 +672,9 @@ export default function SmsSettingsPage() {
                     If your ADN SMS account supports PULL API (receiving replies from clients), enter this callback endpoint in your ADN SMS Portal:
                   </p>
                   <code className="block text-[11px] font-mono p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 text-blue-600 dark:text-blue-400 select-all">
-                    {typeof window !== "undefined" ? `${window.location.origin}/api/sms/callback` : "https://hisam.beepsystems.com.bd/database/api/sms/callback"}
+                    {typeof window !== "undefined"
+                      ? `${window.location.origin}${window.location.pathname.startsWith("/database") ? "/database" : ""}/api/sms/callback`
+                      : "https://hisam.beepsystems.com.bd/database/api/sms/callback"}
                   </code>
                 </div>
 

@@ -4,8 +4,13 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
-  // Define paths that don't require authentication
-  const isPublicPath = path === '/login' || path.startsWith('/api/auth');
+  // Define paths that don't require session cookie authentication
+  // (Cron jobs and ADN SMS webhook callback handle their own authorization or must be publicly callable)
+  const isPublicPath =
+    path === '/login' ||
+    path.startsWith('/api/auth') ||
+    path.startsWith('/api/cron') ||
+    path.startsWith('/api/sms/callback');
   
   // We don't want to block static files, PWA manifests, images, or Next.js internals
   const isStaticPath =
@@ -30,6 +35,14 @@ export function middleware(request: NextRequest) {
   const hasAuthCookie = request.cookies.has('site-auth');
 
   if (!hasAuthCookie) {
+    // For API requests, never redirect to HTML login page as that breaks JSON clients
+    if (path.startsWith('/api/')) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please login again.' },
+        { status: 401 }
+      );
+    }
+
     // Redirect to login if not authenticated
     return NextResponse.redirect(new URL('/database/login', request.url));
   }
