@@ -34,6 +34,18 @@ export {
 const DEFAULT_QSMS_DOMAIN = "https://api.qsms.com.bd";
 
 /**
+ * Safely constructs QSMS API endpoints, preventing double `/v1/v1/` mistakes.
+ */
+export function buildQsmsEndpoint(rawDomain: string | undefined, path: string): string {
+  let base = (rawDomain || DEFAULT_QSMS_DOMAIN).trim().replace(/\/+$/, "");
+  // Strip trailing /v1 if user or config included it in domain
+  base = base.replace(/\/v1$/i, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const fullPath = cleanPath.startsWith("/v1") ? cleanPath : `/v1${cleanPath}`;
+  return `${base}${fullPath}`;
+}
+
+/**
  * Robust JSON HTTP POST client using Node.js https.
  */
 async function callQsmsApi(
@@ -136,7 +148,7 @@ export async function sendQsmsSms(options: SendSmsOptions): Promise<QsmsSendResp
     resolvedMessageType = "unicode";
   }
 
-  const sendEndpoint = `${resolvedDomain}/v1/sms/send`;
+  const sendEndpoint = buildQsmsEndpoint(credentials?.apiDomain || process.env.QSMS_API_DOMAIN, "/sms/send");
 
   const payload = {
     api_key: apiKey.trim(),
@@ -218,10 +230,12 @@ export async function checkQsmsBalance(credentials?: QsmsCredentials): Promise<Q
     };
   }
 
-  // Attempt to ping /v1 root or send endpoint with auth headers to verify credentials
+  const sendEndpoint = buildQsmsEndpoint(credentials?.apiDomain || process.env.QSMS_API_DOMAIN, "/sms/send");
+
+  // Attempt to ping send endpoint with auth headers to verify credentials
   try {
     const { statusCode, body: responseText } = await callQsmsApi(
-      `${apiDomain}/v1/sms/send`,
+      sendEndpoint,
       {
         "X-API-KEY": apiKey.trim(),
         "X-API-SECRET": apiSecret.trim(),
@@ -239,8 +253,24 @@ export async function checkQsmsBalance(credentials?: QsmsCredentials): Promise<Q
       json = { raw: responseText };
     }
 
+    // If route was not found (404)
+    if (json.message?.includes("could not be found") || statusCode === 404) {
+      return {
+        success: false,
+        apiResponseCode: 404,
+        error: json.message || "Endpoint route not found. Please verify API Base URL.",
+        apiResponseMessage: json.message,
+        rawResponse: json,
+      };
+    }
+
     // If unauthorized, credentials are wrong
-    if (json.error === "Unauthorized" || json.message?.includes("Invalid API Key")) {
+    if (
+      json.error === "Unauthorized" ||
+      json.message?.includes("Invalid API Key") ||
+      json.message?.includes("strictly required") ||
+      statusCode === 401
+    ) {
       return {
         success: false,
         apiResponseCode: 401,
@@ -251,11 +281,18 @@ export async function checkQsmsBalance(credentials?: QsmsCredentials): Promise<Q
     }
 
     // If it complains about missing recipient or sender_id, authentication succeeded!
-    if (json.message?.includes("recipient") || json.message?.includes("required") || statusCode === 422 || statusCode === 400) {
+    if (
+      json.message?.includes("recipient") ||
+      json.message?.includes("required") ||
+      json.errors ||
+      statusCode === 422 ||
+      statusCode === 400 ||
+      statusCode === 200
+    ) {
       return {
         success: true,
         apiResponseCode: 200,
-        apiResponseMessage: "QSMS API Credentials Verified Successfully",
+        apiResponseMessage: "QSMS API Credentials Verified & Active",
         rawResponse: json,
       };
     }
