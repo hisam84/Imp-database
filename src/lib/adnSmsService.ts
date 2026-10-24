@@ -7,7 +7,12 @@
  * - SMS delivery status check
  * - Unicode (Bangla) / GSM (English) character detection
  * - Bangladeshi phone number normalization (8801XXXXXXXXX)
+ * - Robust HTTPS client with CURLOPT_SSL_VERIFYPEER=FALSE and IPv4 support
  */
+
+import https from "https";
+import http from "http";
+import { URL } from "url";
 
 export interface AdnCredentials {
   apiKey: string;
@@ -171,6 +176,73 @@ export function calculateSmsParts(text: string): {
 }
 
 /**
+ * Robust HTTP client matching the official ADN SMS PHP cURL specification:
+ * - CURLOPT_SSL_VERIFYPEER = FALSE (rejectUnauthorized: false)
+ * - CURLOPT_TIMEOUT = 30
+ * - IPv4 forced (family: 4)
+ * - Proper User-Agent header
+ */
+async function callAdnHttp(
+  endpointUrl: string,
+  formData: URLSearchParams
+): Promise<{ statusCode: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    try {
+      const parsedUrl = new URL(endpointUrl);
+      const isHttps = parsedUrl.protocol === "https:";
+      const client = isHttps ? https : http;
+
+      const postData = formData.toString();
+
+      const options: https.RequestOptions = {
+        protocol: parsedUrl.protocol,
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || (isHttps ? 443 : 80),
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: "POST",
+        family: 4, // Force IPv4 to prevent IPv6 hanging
+        rejectUnauthorized: false, // Critical: matches CURLOPT_SSL_VERIFYPEER = FALSE from ADN SMS PHP sample
+        timeout: 30000,
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": Buffer.byteLength(postData),
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ImperialIT-ADN-Client/1.0",
+        },
+      };
+
+      const req = client.request(options, (res) => {
+        let responseBody = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          responseBody += chunk;
+        });
+        res.on("end", () => {
+          resolve({
+            statusCode: res.statusCode || 200,
+            body: responseBody,
+          });
+        });
+      });
+
+      req.on("timeout", () => {
+        req.destroy();
+        reject(new Error("Connection to ADN SMS timed out (30s). Please check your internet or firewall."));
+      });
+
+      req.on("error", (err) => {
+        reject(err);
+      });
+
+      req.write(postData);
+      req.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+/**
  * Sends a single SMS via ADN SMS Gateway.
  */
 export async function sendAdnSms(options: SendSmsOptions): Promise<AdnSendResponse> {
@@ -232,25 +304,15 @@ export async function sendAdnSms(options: SendSmsOptions): Promise<AdnSendRespon
   }
 
   try {
-    const response = await fetch(sendEndpoint, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: formData.toString(),
-      cache: "no-store",
-    });
+    const { statusCode, body: responseText } = await callAdnHttp(sendEndpoint, formData);
 
-    const responseText = await response.text();
     let json: any = null;
     try {
       json = JSON.parse(responseText);
     } catch {
-      // Non-JSON response
       return {
         success: false,
-        error: `Unexpected response from ADN SMS server (${response.status}): ${responseText.slice(0, 200)}`,
+        error: `Unexpected response from ADN SMS server (${statusCode}): ${responseText.slice(0, 200)}`,
         rawResponse: responseText,
       };
     }
@@ -311,24 +373,15 @@ export async function checkAdnBalance(credentials?: AdnCredentials): Promise<Adn
   formData.append("api_secret", apiSecret.trim());
 
   try {
-    const response = await fetch(balanceEndpoint, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: formData.toString(),
-      cache: "no-store",
-    });
+    const { statusCode, body: responseText } = await callAdnHttp(balanceEndpoint, formData);
 
-    const responseText = await response.text();
     let json: any = null;
     try {
       json = JSON.parse(responseText);
     } catch {
       return {
         success: false,
-        error: `Unexpected server response (${response.status}): ${responseText.slice(0, 200)}`,
+        error: `Unexpected server response (${statusCode}): ${responseText.slice(0, 200)}`,
         rawResponse: responseText,
       };
     }
@@ -384,17 +437,19 @@ export async function checkAdnSmsStatus(
   formData.append("sms_uid", smsUid);
 
   try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: formData.toString(),
-      cache: "no-store",
-    });
+    const { statusCode, body: responseText } = await callAdnHttp(endpoint, formData);
 
-    const json = await response.json();
+    let json: any = null;
+    try {
+      json = JSON.parse(responseText);
+    } catch {
+      return {
+        success: false,
+        error: `Unexpected server response (${statusCode}): ${responseText.slice(0, 200)}`,
+        rawResponse: responseText,
+      };
+    }
+
     if (json.api_response_code === 200 && json.sms) {
       return {
         success: true,
