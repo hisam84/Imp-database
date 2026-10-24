@@ -159,7 +159,13 @@ export default function SmsSettingsPage() {
           apiDomain: settings.apiDomain,
         }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(`Server returned HTTP ${res.status}: ${raw.slice(0, 100)}`);
+      }
       setBalanceResult(data);
     } catch (err: any) {
       setBalanceResult({ success: false, error: err?.message || "Failed to connect to gateway" });
@@ -188,7 +194,13 @@ export default function SmsSettingsPage() {
           campaignTitle: settings.campaignTitle,
         }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(`Server returned HTTP ${res.status}: ${raw.slice(0, 100)}`);
+      }
       setTestResult(data);
       if (data.success) {
         fetchLogs();

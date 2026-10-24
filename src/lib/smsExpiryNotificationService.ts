@@ -222,8 +222,8 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
       const diffMs = expDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-      // Only evaluate if not already expired
-      if (diffDays <= 0) continue;
+      // Only evaluate if not already past expired date
+      if (diffDays < 0) continue;
 
       const dateStr = expDate.toISOString().slice(0, 10);
 

@@ -205,6 +205,7 @@ async function callAdnHttp(
         timeout: 30000,
         headers: {
           "Accept": "application/json",
+          "Format": "application/json",
           "Content-Type": "application/x-www-form-urlencoded",
           "Content-Length": Buffer.byteLength(postData),
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ImperialIT-ADN-Client/1.0",
@@ -299,7 +300,8 @@ export async function sendAdnSms(options: SendSmsOptions): Promise<AdnSendRespon
   formData.append("mobile", normalizedPhone);
   formData.append("message_body", message);
 
-  if (campaignTitle && campaignTitle.trim()) {
+  // Only pass campaign_title if using GENERAL_CAMPAIGN or MULTIBODY_CAMPAIGN (not allowed for SINGLE_SMS/OTP)
+  if (requestType !== "SINGLE_SMS" && requestType !== "OTP" && campaignTitle && campaignTitle.trim()) {
     formData.append("campaign_title", campaignTitle.trim());
   }
 
@@ -386,17 +388,31 @@ export async function checkAdnBalance(credentials?: AdnCredentials): Promise<Adn
       };
     }
 
-    if (json.api_response_code === 200 && json.balance) {
+    // ADN SMS returns { api_response_code: 200, api_response_message: "SUCCESS", balance: ... }
+    if (json.api_response_code === 200 && json.balance !== undefined && json.balance !== null) {
+      let balanceNum = 0;
+      if (typeof json.balance === "number") {
+        balanceNum = json.balance;
+      } else if (typeof json.balance === "string") {
+        balanceNum = parseFloat(json.balance) || 0;
+      } else if (typeof json.balance === "object") {
+        if (typeof json.balance.sms === "number") {
+          balanceNum = json.balance.sms;
+        } else if (typeof json.balance.sms === "string") {
+          balanceNum = parseFloat(json.balance.sms) || 0;
+        }
+      }
+
       return {
         success: true,
-        smsBalance: typeof json.balance.sms === "number" ? json.balance.sms : Number(json.balance.sms || 0),
+        smsBalance: balanceNum,
         apiResponseCode: json.api_response_code,
         apiResponseMessage: json.api_response_message,
         rawResponse: json,
       };
     }
 
-    const errorCode = json.error?.error_code || json.api_response_code;
+    const errorCode = json.error?.error_code || json.api_response_code || 500;
     const errorMessage = json.error?.error_message || json.api_response_message || "Failed to check balance";
 
     return {
