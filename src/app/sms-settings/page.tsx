@@ -470,7 +470,7 @@ export default function SmsSettingsPage() {
         </div>
       }
     >
-      <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      <div className="max-w-6xl mx-auto space-y-6 pb-12 px-2 sm:px-4 md:px-0">
         {/* Alerts / Feedback Banners */}
         {saveSuccess && (
           <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium flex items-center justify-between shadow-xs animate-in fade-in">
@@ -478,7 +478,7 @@ export default function SmsSettingsPage() {
               <span className="text-lg">✓</span>
               <span>SMS Gateway settings and notification rules updated successfully!</span>
             </div>
-            <button onClick={() => setSaveSuccess(false)} className="text-emerald-500 hover:text-emerald-700">✕</button>
+            <button onClick={() => setSaveSuccess(false)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer">✕</button>
           </div>
         )}
 
@@ -488,7 +488,7 @@ export default function SmsSettingsPage() {
               <span className="text-lg">⚠️</span>
               <span>{saveError}</span>
             </div>
-            <button onClick={() => setSaveError("")} className="text-red-500 hover:text-red-700">✕</button>
+            <button onClick={() => setSaveError("")} className="text-red-500 hover:text-red-700 cursor-pointer">✕</button>
           </div>
         )}
 
@@ -523,7 +523,7 @@ export default function SmsSettingsPage() {
           </div>
 
           {/* QSMS Gateway Live Status Card */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1 min-w-0">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 QSMS Gateway Status
@@ -538,11 +538,11 @@ export default function SmsSettingsPage() {
                 </h3>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
               <button
                 onClick={handleRunDiagnosis}
                 disabled={diagnosing}
-                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer min-h-[38px]"
                 title="Diagnose DNS, TCP port 443, and QSMS Gateway reachability"
               >
                 {diagnosing ? (
@@ -556,7 +556,7 @@ export default function SmsSettingsPage() {
               <button
                 onClick={handleCheckBalance}
                 disabled={checkingBalance}
-                className="px-3 py-1.5 bg-[#0D47A1]/10 hover:bg-[#0D47A1]/20 text-[#0D47A1] dark:text-[#90CAF9] border border-[#0D47A1]/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-3 py-1.5 bg-[#0D47A1]/10 hover:bg-[#0D47A1]/20 text-[#0D47A1] dark:text-[#90CAF9] border border-[#0D47A1]/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer min-h-[38px]"
                 title="Verify connection to QSMS Gateway API"
               >
                 {checkingBalance ? (
@@ -572,7 +572,7 @@ export default function SmsSettingsPage() {
           </div>
 
           {/* Quick Manual Scan Trigger Card */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Immediate Expiry Scan
@@ -581,11 +581,11 @@ export default function SmsSettingsPage() {
                 Trigger scan now without waiting for cron
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 onClick={handleTriggerScanNow}
                 disabled={scanningNow || broadcastingExpired}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 cursor-pointer min-h-[38px]"
                 title="Runs standard milestone scan for upcoming and new expiries"
               >
                 {scanningNow ? (
@@ -601,7 +601,7 @@ export default function SmsSettingsPage() {
               <button
                 onClick={handleSendAllExpiredNow}
                 disabled={scanningNow || broadcastingExpired}
-                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 cursor-pointer min-h-[38px]"
                 title="Sends the Expired Template to all past expired domains"
               >
                 {broadcastingExpired ? (
@@ -767,10 +767,10 @@ export default function SmsSettingsPage() {
         )}
 
         {/* Tab Navigation Navigation Bar */}
-        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto scrollbar-none no-scrollbar flex-nowrap -mx-2 px-2 sm:mx-0 sm:px-0">
           <button
             onClick={() => setActiveTab("gateway")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer min-h-[38px] ${
               activeTab === "gateway"
                 ? "bg-[#0D47A1] text-white shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -782,7 +782,7 @@ export default function SmsSettingsPage() {
 
           <button
             onClick={() => setActiveTab("rules")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer min-h-[38px] ${
               activeTab === "rules"
                 ? "bg-[#0D47A1] text-white shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -794,7 +794,7 @@ export default function SmsSettingsPage() {
 
           <button
             onClick={() => setActiveTab("template")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer min-h-[38px] ${
               activeTab === "template"
                 ? "bg-[#0D47A1] text-white shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -806,7 +806,7 @@ export default function SmsSettingsPage() {
 
           <button
             onClick={() => setActiveTab("logs")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer min-h-[38px] ${
               activeTab === "logs"
                 ? "bg-[#0D47A1] text-white shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -821,7 +821,7 @@ export default function SmsSettingsPage() {
         {activeTab === "gateway" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
             {/* Credentials Configuration Form */}
-            <div className="lg:col-span-2 space-y-5 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+            <div className="lg:col-span-2 space-y-5 p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   QSMS (Qolek SMS) API Credentials
@@ -857,7 +857,7 @@ export default function SmsSettingsPage() {
                     value={settings.apiKey}
                     onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
                     placeholder="Enter your QSMS API Key"
-                    className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                 </div>
 
@@ -870,7 +870,7 @@ export default function SmsSettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShowSecret(!showSecret)}
-                      className="text-[11px] text-[#0D47A1] dark:text-[#90CAF9] hover:underline"
+                      className="text-[11px] text-[#0D47A1] dark:text-[#90CAF9] hover:underline cursor-pointer"
                     >
                       {showSecret ? "Hide" : "Show"}
                     </button>
@@ -880,7 +880,7 @@ export default function SmsSettingsPage() {
                     value={apiSecretInput}
                     onChange={(e) => setApiSecretInput(e.target.value)}
                     placeholder={hasExistingSecret ? "•••••••• (Leave blank to keep existing)" : "Enter QSMS API Secret"}
-                    className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   {hasExistingSecret && (
                     <span className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 block">
@@ -899,7 +899,7 @@ export default function SmsSettingsPage() {
                     value={settings.apiDomain}
                     onChange={(e) => setSettings({ ...settings, apiDomain: e.target.value })}
                     placeholder="https://api.qsms.com.bd"
-                    className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   <span className="text-[10px] text-slate-400 mt-1 block">
                     Default is <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">https://api.qsms.com.bd</code>
@@ -931,7 +931,7 @@ export default function SmsSettingsPage() {
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     If your ADN SMS account supports PULL API (receiving replies from clients), enter this callback endpoint in your ADN SMS Portal:
                   </p>
-                  <code className="block text-[11px] font-mono p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 text-blue-600 dark:text-blue-400 select-all">
+                  <code className="block text-[11px] font-mono p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 text-blue-600 dark:text-blue-400 select-all break-all">
                     {typeof window !== "undefined"
                       ? `${window.location.origin}${window.location.pathname.startsWith("/database") ? "/database" : ""}/api/sms/callback`
                       : "https://hisam.beepsystems.com.bd/database/api/sms/callback"}
@@ -955,7 +955,7 @@ export default function SmsSettingsPage() {
                         })
                       }
                       placeholder="e.g. Imperial IT"
-                      className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                      className="w-full min-h-[44px] px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                     />
                     <span className="text-[10px] text-slate-400 mt-1 block">
                       Approved Masking or Non-masking Sender ID on QSMS
@@ -974,7 +974,7 @@ export default function SmsSettingsPage() {
                           messageType: e.target.value as "AUTO" | "TEXT" | "UNICODE",
                         })
                       }
-                      className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                      className="w-full min-h-[44px] px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                     >
                       <option value="AUTO">Auto-Detect (Bangla = Unicode, English = Text)</option>
                       <option value="UNICODE">Always Unicode (Supports Bengali & Special Chars)</option>
@@ -983,11 +983,11 @@ export default function SmsSettingsPage() {
                   </div>
                 </div>
 
-                <div className="pt-2 flex justify-end">
+                <div className="pt-2 flex flex-col sm:flex-row justify-end">
                   <button
                     onClick={handleSaveSettings}
                     disabled={saving}
-                    className="px-5 py-2.5 bg-[#0D47A1] hover:bg-[#1565C0] text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                    className="w-full sm:w-auto min-h-[42px] px-5 py-2.5 bg-[#0D47A1] hover:bg-[#1565C0] text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center"
                   >
                     {saving ? "Saving..." : "Save Credentials"}
                   </button>
@@ -996,7 +996,7 @@ export default function SmsSettingsPage() {
             </div>
 
             {/* Test SMS Dispatch Box */}
-            <div className="space-y-4 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col justify-between">
+            <div className="space-y-4 p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col justify-between">
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -1017,7 +1017,7 @@ export default function SmsSettingsPage() {
                     value={testPhone}
                     onChange={(e) => setTestPhone(e.target.value)}
                     placeholder="017XXXXXXXX"
-                    className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   <span className="text-[10px] text-slate-400 mt-1 block">
                     Bangladeshi 11 digits (e.g. 01712345678)
@@ -1060,7 +1060,7 @@ export default function SmsSettingsPage() {
                 type="button"
                 onClick={handleSendTest}
                 disabled={sendingTest}
-                className="w-full mt-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                className="w-full mt-4 min-h-[44px] py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
               >
                 {sendingTest ? (
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1117,8 +1117,8 @@ export default function SmsSettingsPage() {
               </div>
 
               {/* Add Custom Milestone & Presets */}
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <input
                     type="number"
                     min={1}
@@ -1126,23 +1126,23 @@ export default function SmsSettingsPage() {
                     value={newMilestoneInput}
                     onChange={(e) => setNewMilestoneInput(e.target.value)}
                     placeholder="Enter days (e.g. 10)"
-                    className="w-36 px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                    className="flex-1 sm:w-36 min-h-[40px] px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   <button
                     type="button"
                     onClick={handleAddMilestone}
-                    className="px-3 py-1.5 bg-[#0D47A1] hover:bg-[#1565C0] text-white text-xs font-semibold rounded-xl cursor-pointer"
+                    className="min-h-[40px] px-3.5 py-1.5 bg-[#0D47A1] hover:bg-[#1565C0] text-white text-xs font-semibold rounded-xl cursor-pointer shrink-0"
                   >
                     + Add Day
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-400">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
                   <span>Presets:</span>
                   <button
                     type="button"
                     onClick={() => setSettings({ ...settings, expiryDaysMilestones: [30, 15, 7, 3, 1] })}
-                    className="text-[#0D47A1] dark:text-[#90CAF9] hover:underline"
+                    className="text-[#0D47A1] dark:text-[#90CAF9] hover:underline cursor-pointer"
                   >
                     Standard [30, 15, 7, 3, 1]
                   </button>
@@ -1150,7 +1150,7 @@ export default function SmsSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setSettings({ ...settings, expiryDaysMilestones: [15, 7, 1] })}
-                    className="text-[#0D47A1] dark:text-[#90CAF9] hover:underline"
+                    className="text-[#0D47A1] dark:text-[#90CAF9] hover:underline cursor-pointer"
                   >
                     Short [15, 7, 1]
                   </button>
@@ -1158,7 +1158,7 @@ export default function SmsSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setSettings({ ...settings, expiryDaysMilestones: [7, 3, 1] })}
-                    className="text-[#0D47A1] dark:text-[#90CAF9] hover:underline"
+                    className="text-[#0D47A1] dark:text-[#90CAF9] hover:underline cursor-pointer"
                   >
                     Urgent [7, 3, 1]
                   </button>
@@ -1375,7 +1375,7 @@ export default function SmsSettingsPage() {
                     value={settings.companyPhone}
                     onChange={(e) => setSettings({ ...settings, companyPhone: e.target.value })}
                     placeholder="01711223344"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   <span className="text-[10px] text-slate-400 mt-1 block">
                     Replaces <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">&#123;companyPhone&#125;</code> in template
@@ -1391,7 +1391,7 @@ export default function SmsSettingsPage() {
                     value={settings.companyName}
                     onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
                     placeholder="Imperial IT"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   <span className="text-[10px] text-slate-400 mt-1 block">
                     Replaces <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">&#123;companyName&#125;</code> in template
@@ -1407,7 +1407,7 @@ export default function SmsSettingsPage() {
                     value={settings.adminCopyPhone || ""}
                     onChange={(e) => setSettings({ ...settings, adminCopyPhone: e.target.value })}
                     placeholder="018XXXXXXXX"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
                   />
                   <span className="text-[10px] text-slate-400 mt-1 block">
                     Receive SMS copy when expiry alerts trigger
@@ -1422,11 +1422,11 @@ export default function SmsSettingsPage() {
         {activeTab === "template" && (
           <div className="space-y-4 animate-in fade-in">
             {/* Sub-tab Pill Switcher */}
-            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 w-fit">
+            <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 w-full sm:w-fit">
               <button
                 type="button"
                 onClick={() => setTemplateSubTab("expiring")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`flex-1 sm:flex-initial text-center justify-center min-h-[38px] px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                   templateSubTab === "expiring"
                     ? "bg-white dark:bg-slate-900 text-[#0D47A1] dark:text-[#90CAF9] shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
@@ -1439,7 +1439,7 @@ export default function SmsSettingsPage() {
               <button
                 type="button"
                 onClick={() => setTemplateSubTab("expired")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`flex-1 sm:flex-initial text-center justify-center min-h-[38px] px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                   templateSubTab === "expired"
                     ? "bg-white dark:bg-slate-900 text-[#0D47A1] dark:text-[#90CAF9] shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
@@ -1594,11 +1594,11 @@ export default function SmsSettingsPage() {
                   </div>
                 </div>
 
-                <div className="pt-2 flex justify-end">
+                <div className="pt-2 flex flex-col sm:flex-row justify-end">
                   <button
                     onClick={handleSaveSettings}
                     disabled={saving}
-                    className="px-5 py-2.5 bg-[#0D47A1] hover:bg-[#1565C0] text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                    className="w-full sm:w-auto min-h-[42px] px-5 py-2.5 bg-[#0D47A1] hover:bg-[#1565C0] text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center"
                   >
                     {saving ? "Saving..." : "Save Template"}
                   </button>
@@ -1673,7 +1673,7 @@ export default function SmsSettingsPage() {
 
         {/* TAB 4: DISPATCH LOGS & AUDIT TRAIL */}
         {activeTab === "logs" && (
-          <div className="space-y-4 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs animate-in fade-in">
+          <div className="space-y-4 p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs animate-in fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -1685,12 +1685,12 @@ export default function SmsSettingsPage() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={fetchLogs}
                   disabled={loadingLogs}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="flex-1 sm:flex-initial min-h-[38px] justify-center px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   {loadingLogs ? (
                     <span className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
@@ -1702,7 +1702,7 @@ export default function SmsSettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleResetSentCache(false)}
-                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                  className="flex-1 sm:flex-initial min-h-[38px] justify-center px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                   title="Allows re-triggering reminders for institutions already alerted"
                 >
                   Reset Sent Cache
@@ -1711,7 +1711,7 @@ export default function SmsSettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleResetSentCache(true)}
-                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                  className="flex-1 sm:flex-initial min-h-[38px] justify-center px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                   title="Purge all logs"
                 >
                   Clear All Logs
@@ -1726,21 +1726,21 @@ export default function SmsSettingsPage() {
                 value={logsSearch}
                 onChange={(e) => setLogsSearch(e.target.value)}
                 placeholder="Search by institution name, domain, recipient phone, or status..."
-                className="w-full sm:w-80 px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
+                className="w-full sm:w-80 min-h-[42px] px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]"
               />
             </div>
 
             {/* Table */}
             <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800/80">
-              <table className="w-full text-left text-xs">
+              <table className="w-full min-w-[700px] text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="px-3.5 py-2.5">Date & Time</th>
-                    <th className="px-3.5 py-2.5">Institution / Domain</th>
-                    <th className="px-3.5 py-2.5">Recipient Number</th>
-                    <th className="px-3.5 py-2.5">Milestone</th>
-                    <th className="px-3.5 py-2.5">Status</th>
-                    <th className="px-3.5 py-2.5">SMS UID / Error</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Date & Time</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Institution / Domain</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Recipient Number</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Milestone</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Status</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">SMS UID / Error</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">

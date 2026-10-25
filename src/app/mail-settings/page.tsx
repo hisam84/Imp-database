@@ -365,13 +365,13 @@ export default function MailSettingsPage() {
       title="Mail & SMTP Settings"
       subtitle="Configure outgoing SMTP mail server and automated notification channels"
     >
-      <div className="max-w-4xl mx-auto space-y-6 pb-16">
+      <div className="max-w-4xl mx-auto space-y-6 pb-16 px-2 sm:px-4 md:px-0">
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none no-scrollbar -mx-2 px-2 sm:mx-0 sm:px-0 gap-1 sm:gap-0">
           <button
             type="button"
             onClick={() => setActiveTab("smtp")}
-            className={`flex items-center gap-2 py-3 px-5 text-sm font-semibold border-b-2 transition-all ${
+            className={`shrink-0 whitespace-nowrap flex items-center gap-2 py-3 px-3.5 sm:px-5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === "smtp"
                 ? "border-blue-500 text-blue-600 dark:text-blue-400"
                 : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
@@ -396,7 +396,7 @@ export default function MailSettingsPage() {
           <button
             type="button"
             onClick={() => setActiveTab("rules")}
-            className={`flex items-center gap-2 py-3 px-5 text-sm font-semibold border-b-2 transition-all ${
+            className={`shrink-0 whitespace-nowrap flex items-center gap-2 py-3 px-3.5 sm:px-5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === "rules"
                 ? "border-blue-500 text-blue-600 dark:text-blue-400"
                 : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
@@ -470,8 +470,8 @@ export default function MailSettingsPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
+                <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                  <div className="text-left sm:text-right">
                     <div className="text-xs font-bold text-slate-900 dark:text-white">
                       Custom SMTP Mode
                     </div>
@@ -484,7 +484,7 @@ export default function MailSettingsPage() {
                     onClick={() =>
                       setSmtpConfig((prev) => ({ ...prev, isEnabled: !prev.isEnabled }))
                     }
-                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none shrink-0 ${
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none shrink-0 cursor-pointer ${
                       smtpConfig.isEnabled ? "bg-[#2196F3]" : "bg-slate-300 dark:bg-slate-700"
                     }`}
                     title={smtpConfig.isEnabled ? "Disable Custom SMTP" : "Enable Custom SMTP"}
@@ -501,7 +501,7 @@ export default function MailSettingsPage() {
 
             {/* Quick Presets Section */}
             <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   Quick Server Presets
                 </span>
@@ -510,7 +510,7 @@ export default function MailSettingsPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1">
                 {(Object.keys(SMTP_PRESETS) as SmtpProviderType[]).map((key) => {
                   const preset = SMTP_PRESETS[key];
                   const isSelected = smtpConfig.provider === key;
@@ -519,7 +519,7 @@ export default function MailSettingsPage() {
                       key={key}
                       type="button"
                       onClick={() => handleSelectPreset(key)}
-                      className={`p-2.5 rounded-xl border text-xs font-medium text-left transition-all flex flex-col justify-between ${
+                      className={`p-2.5 rounded-xl border text-xs font-medium text-left transition-all flex flex-col justify-between cursor-pointer ${
                         isSelected
                           ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 shadow-sm"
                           : "border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600"
@@ -550,8 +550,8 @@ export default function MailSettingsPage() {
             </div>
 
             {/* SMTP Configuration Form */}
-            <form onSubmit={handleSaveSmtp} className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+            <form onSubmit={handleSaveSmtp} className="p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-5">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                     SMTP Credentials & Connection Settings
@@ -560,7 +560,7 @@ export default function MailSettingsPage() {
                     Configure host, port, authentication credentials, and sender headers
                   </p>
                 </div>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                <span className="self-start sm:self-auto text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                   {smtpConfig.provider.toUpperCase()}
                 </span>
               </div>
@@ -577,7 +577,7 @@ export default function MailSettingsPage() {
                     value={smtpConfig.host}
                     onChange={(e) => setSmtpConfig({ ...smtpConfig, host: e.target.value })}
                     placeholder="e.g. smtp.gmail.com or mail.yourdomain.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -592,7 +592,7 @@ export default function MailSettingsPage() {
                     value={smtpConfig.port}
                     onChange={(e) => setSmtpConfig({ ...smtpConfig, port: Number(e.target.value) })}
                     placeholder="587 / 465 / 25"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -604,7 +604,7 @@ export default function MailSettingsPage() {
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label
-                    className={`p-3 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
+                    className={`p-3.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
                       !smtpConfig.secure
                         ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200"
                         : "border-slate-200 dark:border-slate-750 bg-slate-50/50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300"
@@ -626,7 +626,7 @@ export default function MailSettingsPage() {
                   </label>
 
                   <label
-                    className={`p-3 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
+                    className={`p-3.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
                       smtpConfig.secure
                         ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200"
                         : "border-slate-200 dark:border-slate-750 bg-slate-50/50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300"
@@ -661,7 +661,7 @@ export default function MailSettingsPage() {
                     value={smtpConfig.user}
                     onChange={(e) => setSmtpConfig({ ...smtpConfig, user: e.target.value })}
                     placeholder="e.g. user@gmail.com or info@domain.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -686,12 +686,12 @@ export default function MailSettingsPage() {
                           ? "•••••••• (Leave blank to keep existing)"
                           : "Enter SMTP or App Password"
                       }
-                      className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full min-h-[44px] px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
                       title={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? (
@@ -720,7 +720,7 @@ export default function MailSettingsPage() {
                     value={smtpConfig.fromName}
                     onChange={(e) => setSmtpConfig({ ...smtpConfig, fromName: e.target.value })}
                     placeholder="e.g. Imperial IT"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -733,7 +733,7 @@ export default function MailSettingsPage() {
                     value={smtpConfig.fromEmail}
                     onChange={(e) => setSmtpConfig({ ...smtpConfig, fromEmail: e.target.value })}
                     placeholder="Defaults to SMTP Username"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -746,14 +746,14 @@ export default function MailSettingsPage() {
                     value={smtpConfig.replyTo || ""}
                     onChange={(e) => setSmtpConfig({ ...smtpConfig, replyTo: e.target.value })}
                     placeholder="e.g. support@domain.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               {/* Application Base URL for Email Links */}
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div>
                     <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
                       Application Live URL / Domain (Email & Notification Links)
@@ -762,7 +762,7 @@ export default function MailSettingsPage() {
                       This URL is used in email dashboard buttons, task links, and footer links (e.g. VPS IP or custom domain).
                     </p>
                   </div>
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                  <span className="self-start sm:self-auto text-[10px] font-medium text-slate-400 uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
                     Optional
                   </span>
                 </div>
@@ -771,7 +771,7 @@ export default function MailSettingsPage() {
                   value={smtpConfig.appUrl || ""}
                   onChange={(e) => setSmtpConfig({ ...smtpConfig, appUrl: e.target.value })}
                   placeholder="https://hisam.beepsystems.com.bd/database"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-[10px] text-slate-400 dark:text-slate-500">
                   If left empty, environment variables <code>APP_URL</code> or <code>NEXT_PUBLIC_APP_URL</code> will be used automatically (ensuring the /database path).
@@ -779,7 +779,7 @@ export default function MailSettingsPage() {
               </div>
 
               {/* Brevo Fallback Toggle */}
-              <div className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between">
+              <div className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between gap-3">
                 <div>
                   <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     Fallback to Brevo on Failure (Recommended)
@@ -794,17 +794,17 @@ export default function MailSettingsPage() {
                   onChange={(e) =>
                     setSmtpConfig({ ...smtpConfig, useBrevoFallback: e.target.checked })
                   }
-                  className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 shrink-0"
+                  className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 shrink-0 cursor-pointer"
                 />
               </div>
 
               {/* Form Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
                 <button
                   type="button"
                   onClick={handleVerifyConnection}
                   disabled={verifying || savingSmtp || !smtpConfig.host || !smtpConfig.user}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {verifying ? (
                     <>
@@ -821,7 +821,7 @@ export default function MailSettingsPage() {
                 <button
                   type="submit"
                   disabled={savingSmtp || verifying}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-bold rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-bold rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {savingSmtp ? (
                     <>
@@ -857,7 +857,7 @@ export default function MailSettingsPage() {
             )}
 
             {/* Send Live Test Email Card */}
-            <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
                 Send Live Test Email via Configured SMTP
               </h3>
@@ -872,12 +872,12 @@ export default function MailSettingsPage() {
                   value={testEmail}
                   onChange={(e) => setTestEmail(e.target.value)}
                   placeholder="Enter recipient email address..."
-                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="flex-1 min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
                 />
                 <button
                   type="submit"
                   disabled={sendingTest}
-                  className="px-5 py-2.5 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-bold rounded-xl transition-colors shadow-sm disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
+                  className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-bold rounded-xl transition-colors shadow-sm disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {sendingTest ? (
                     <>
@@ -955,7 +955,7 @@ export default function MailSettingsPage() {
                   type="button"
                   onClick={() => handleToggleRule("masterEnabled")}
                   disabled={savingRules}
-                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none shrink-0 ${
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none shrink-0 self-end sm:self-auto cursor-pointer ${
                     settings.masterEnabled ? "bg-[#2196F3]" : "bg-slate-300 dark:bg-slate-700"
                   }`}
                   title={settings.masterEnabled ? "Disable All Emails" : "Enable All Emails"}
@@ -992,10 +992,10 @@ export default function MailSettingsPage() {
                   return (
                     <div
                       key={svc.key}
-                      className="p-4 sm:p-5 flex items-start justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                      className="p-4 sm:p-5 flex items-start justify-between gap-3 sm:gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                     >
                       <div className="space-y-1 max-w-xl">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                           <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
                             {svc.name}
                           </span>
@@ -1015,7 +1015,7 @@ export default function MailSettingsPage() {
                         <p className="text-xs text-slate-600 dark:text-slate-400">
                           {svc.description}
                         </p>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-1.5 pt-0.5">
                           <span className="font-semibold text-slate-700 dark:text-slate-300">Target:</span>
                           <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                             {svc.target}
@@ -1027,7 +1027,7 @@ export default function MailSettingsPage() {
                         type="button"
                         onClick={() => handleToggleRule(svc.key)}
                         disabled={savingRules || !settings.masterEnabled}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ${
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 cursor-pointer ${
                           settings[svc.key] && settings.masterEnabled
                             ? "bg-[#2196F3]"
                             : "bg-slate-200 dark:bg-slate-700 opacity-60"
@@ -1047,7 +1047,7 @@ export default function MailSettingsPage() {
             </div>
 
             {/* Task Alert & Overdue Notification Dispatcher */}
-            <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1060,12 +1060,12 @@ export default function MailSettingsPage() {
                     Trigger background scanning for approaching deadlines (2-hour notice) and overdue task email alerts immediately.
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => handleRunTaskAlertCheck(false)}
                     disabled={triggeringCron}
-                    className="px-3.5 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                    className="w-full sm:w-auto min-h-[40px] px-3.5 py-2 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     {triggeringCron ? "Scanning..." : "⚡ Run Alert Check Now"}
                   </button>
@@ -1073,7 +1073,7 @@ export default function MailSettingsPage() {
                     type="button"
                     onClick={() => handleRunTaskAlertCheck(true)}
                     disabled={triggeringCron}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors disabled:opacity-50"
+                    className="w-full sm:w-auto min-h-[40px] px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center cursor-pointer"
                     title="Clears sent memory and re-evaluates all active tasks"
                   >
                     Reset & Rescan

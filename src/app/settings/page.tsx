@@ -181,7 +181,7 @@ export default function SettingsPage() {
       title="System & Expiry Settings"
       subtitle="Configure website and subscription expiry days, thresholds, and automated email alerts"
     >
-      <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <div className="max-w-4xl mx-auto space-y-6 pb-12 px-2 sm:px-4 md:px-0">
         {loading ? (
           <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-400">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -204,16 +204,16 @@ export default function SettingsPage() {
             )}
 
             {/* CARD 1: Automated Email Alerts Master Switch */}
-            <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+              <div className="flex items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                       Automated Expiry Alerts
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -225,7 +225,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setAutoEmailEnabled(!autoEmailEnabled)}
-                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none shrink-0 ${
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none shrink-0 cursor-pointer ${
                     autoEmailEnabled ? "bg-[#2196F3]" : "bg-slate-300 dark:bg-slate-700"
                   }`}
                   title={autoEmailEnabled ? "Disable Expiry Emails" : "Enable Expiry Emails"}
@@ -241,13 +241,13 @@ export default function SettingsPage() {
 
             {/* CARD 2: Institution Website Expiry Settings */}
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xl">
+                  <span className="p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-lg sm:text-xl">
                     🌐
                   </span>
                   <div>
-                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
                       Institution Website Expiry Settings
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -256,7 +256,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <label className="flex items-center gap-2 cursor-pointer self-start sm:self-auto shrink-0 p-1.5 sm:p-0 rounded-lg bg-slate-50 dark:bg-slate-800 sm:bg-transparent">
                   <input
                     type="checkbox"
                     checked={websiteExpiryEmailEnabled}
@@ -270,9 +270,9 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="p-4 sm:p-6 space-y-4">
                 {/* Important Business Rule Notice */}
-                <div className="p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
                   <p className="font-bold flex items-center gap-1.5">
                     <span>📌</span>
                     <span>Important Rule:</span>
@@ -282,7 +282,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Website Days */}
                   <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 space-y-2">
                     <div className="flex items-center justify-between">
@@ -305,7 +305,7 @@ export default function SettingsPage() {
                         required
                         value={websiteDays}
                         onChange={(e) => setWebsiteDays(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px]"
                       />
                       <span className="text-xs font-bold text-slate-500 shrink-0">days before</span>
                     </div>
@@ -333,7 +333,7 @@ export default function SettingsPage() {
                         required
                         value={softwareDays}
                         onChange={(e) => setSoftwareDays(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px]"
                       />
                       <span className="text-xs font-bold text-slate-500 shrink-0">days before</span>
                     </div>
@@ -344,13 +344,13 @@ export default function SettingsPage() {
 
             {/* CARD 3: Company Software Subscription Expiry Settings */}
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xl">
+                  <span className="p-2 sm:p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 text-lg sm:text-xl">
                     🏢
                   </span>
                   <div>
-                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
                       Company Software Subscription Expiry Settings
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -359,7 +359,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <label className="flex items-center gap-2 cursor-pointer self-start sm:self-auto shrink-0 p-1.5 sm:p-0 rounded-lg bg-slate-50 dark:bg-slate-800 sm:bg-transparent">
                   <input
                     type="checkbox"
                     checked={companyExpiryEmailEnabled}
@@ -373,8 +373,8 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 sm:p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Monthly */}
                   <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 space-y-2">
                     <div className="flex items-center justify-between">
@@ -395,7 +395,7 @@ export default function SettingsPage() {
                         required
                         value={monthlyDays}
                         onChange={(e) => setMonthlyDays(Math.max(0, parseInt(e.target.value) || 0))}
-                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px]"
                       />
                       <span className="text-xs font-bold text-slate-500 shrink-0">days</span>
                     </div>
@@ -421,14 +421,14 @@ export default function SettingsPage() {
                         required
                         value={halfYearlyDays}
                         onChange={(e) => setHalfYearlyDays(Math.max(0, parseInt(e.target.value) || 0))}
-                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px]"
                       />
                       <span className="text-xs font-bold text-slate-500 shrink-0">days</span>
                     </div>
                   </div>
 
                   {/* Yearly */}
-                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 space-y-2">
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 space-y-2 sm:col-span-2 lg:col-span-1">
                     <div className="flex items-center justify-between">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                         Yearly
@@ -447,7 +447,7 @@ export default function SettingsPage() {
                         required
                         value={yearlyDays}
                         onChange={(e) => setYearlyDays(Math.max(0, parseInt(e.target.value) || 0))}
-                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none min-h-[44px]"
                       />
                       <span className="text-xs font-bold text-slate-500 shrink-0">days</span>
                     </div>
@@ -455,7 +455,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Default/Fallback Cycle */}
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-950/30">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-950/30">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                       Fallback Threshold (Default)
@@ -464,14 +464,14 @@ export default function SettingsPage() {
                       Applied to custom subscriptions without a standard billing cycle
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
                     <input
                       type="number"
                       min="0"
                       max="365"
                       value={defaultDays}
                       onChange={(e) => setDefaultDays(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-20 px-3 py-1.5 text-center font-mono text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-24 px-3 py-1.5 text-center font-mono text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                     <span className="text-xs font-medium text-slate-500">days</span>
                   </div>
@@ -480,12 +480,12 @@ export default function SettingsPage() {
             </div>
 
             {/* CARD 4: Recipient & Admin Notification Routing */}
-            <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+            <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 Recipient & Administrator Routing
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Administrator Alert Email
@@ -495,14 +495,14 @@ export default function SettingsPage() {
                     value={adminNotificationEmail}
                     onChange={(e) => setAdminNotificationEmail(e.target.value)}
                     placeholder="e.g. imperialitbd2011@gmail.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
                   />
                   <p className="text-[11px] text-slate-400">
                     Receives action-item notifications if an institution has no client email on file, or receives CC.
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                <div className="flex items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
                   <div>
                     <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
                       CC Admin on Client Expiry Notices
@@ -515,18 +515,18 @@ export default function SettingsPage() {
                     type="checkbox"
                     checked={notifyAdminOnExpiry}
                     onChange={(e) => setNotifyAdminOnExpiry(e.target.checked)}
-                    className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 shrink-0"
+                    className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 shrink-0 mt-1 sm:mt-0"
                   />
                 </div>
               </div>
             </div>
 
             {/* Action Buttons: Save & Reset */}
-            <div className="pt-2 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
+            <div className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={handleResetDefaults}
-                className="px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                className="w-full sm:w-auto px-4 py-2.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-center"
               >
                 Reset Defaults
               </button>
@@ -534,7 +534,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2.5 text-xs font-bold text-white bg-[#2196F3] hover:bg-[#1E88E5] rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
+                className="w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-white bg-[#2196F3] hover:bg-[#1E88E5] rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer min-h-[42px]"
               >
                 {saving ? (
                   <>
@@ -550,10 +550,10 @@ export default function SettingsPage() {
         )}
 
         {/* Real-time Expiry Alert Scanner & Dispatcher Card */}
-        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm mt-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+        <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm mt-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
                 <span>Real-Time Expiry Alert Dispatcher</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   On-Demand Cron
@@ -563,12 +563,12 @@ export default function SettingsPage() {
                 Scan all registered websites and subscriptions right now according to the configured threshold days, and dispatch alert emails.
               </p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0">
               <button
                 type="button"
                 onClick={() => handleRunExpiryCheck(false)}
                 disabled={triggeringCheck}
-                className="px-4 py-2.5 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2.5 bg-[#2196F3] hover:bg-[#1E88E5] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer min-h-[40px]"
               >
                 {triggeringCheck ? "Scanning..." : "⚡ Run Expiry Alert Check Now"}
               </button>
@@ -576,7 +576,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => handleRunExpiryCheck(true)}
                 disabled={triggeringCheck}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 cursor-pointer min-h-[40px] text-center"
                 title="Clears sent history and re-evaluates all websites and subscriptions"
               >
                 Reset & Rescan
@@ -608,9 +608,9 @@ export default function SettingsPage() {
         </div>
 
         {/* Quick Link to SMTP & Mail Settings */}
-        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 flex items-center justify-between">
+        <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-lg">
+            <span className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-lg shrink-0">
               ✉️
             </span>
             <div>
@@ -624,7 +624,7 @@ export default function SettingsPage() {
           </div>
           <Link
             href="/mail-settings"
-            className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-center shrink-0 cursor-pointer"
           >
             Open Mail Settings &rarr;
           </Link>
