@@ -10,7 +10,9 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:backup": "node scripts/backupDatabase.mjs",
-    "db:restore": "node scripts/restoreDatabase.mjs"
+    "db:restore": "node scripts/restoreDatabase.mjs",
+    "db:swap-names": "node scripts/swapInvertedInstitutionNames.mjs",
+    "db:swap-names:apply": "node scripts/swapInvertedInstitutionNames.mjs --apply"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
