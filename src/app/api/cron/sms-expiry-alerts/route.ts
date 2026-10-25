@@ -23,18 +23,20 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const reset = searchParams.get("reset") === "true";
+    const allExpired = searchParams.get("allExpired") === "true";
     const force = searchParams.get("force") === "true" || reset;
 
     if (reset) {
       await clearPersistedSmsExpiryAlerts();
     }
 
-    const result = await checkAndSendSmsExpiryAlerts({ force });
+    const result = await checkAndSendSmsExpiryAlerts({ force, allExpired });
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       forced: force,
+      allExpired,
       ...result,
     });
   } catch (error: any) {

@@ -62,6 +62,7 @@ export default function SmsSettingsPage() {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logsSearch, setLogsSearch] = useState("");
   const [scanningNow, setScanningNow] = useState(false);
+  const [broadcastingExpired, setBroadcastingExpired] = useState(false);
   const [scanResult, setScanResult] = useState<{
     success: boolean;
     checkedWebsites?: number;
@@ -284,6 +285,48 @@ export default function SmsSettingsPage() {
       setScanResult({ success: false, errors: [err?.message || "Scan failed"] });
     } finally {
       setScanningNow(false);
+    }
+  }
+
+  async function handleSendAllExpiredNow() {
+    if (
+      !confirm(
+        "Are you sure you want to send the Domain Expired SMS to ALL currently expired institutions right now?\n\nThis will send the customized Expired SMS message to every institution whose domain has expired."
+      )
+    ) {
+      return;
+    }
+
+    setBroadcastingExpired(true);
+    setScanResult(null);
+
+    try {
+      let res = await fetch("/api/sms/scan?allExpired=true&force=true", { method: "POST" });
+      if (res.status === 404) {
+        res = await fetch("/api/cron/sms-expiry-alerts?allExpired=true&force=true", { method: "POST" });
+      }
+
+      const rawText = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(
+          `Server returned HTTP ${res.status} (${res.statusText || "HTML"}). ` +
+          `If you just pulled the latest code on your VPS, please run 'npm run build' and restart your Next.js process (e.g. pm2 restart).`
+        );
+      }
+
+      if (!res.ok && !data.errors) {
+        throw new Error(data.error || `HTTP ${res.status}: Broadcast failed`);
+      }
+
+      setScanResult(data);
+      fetchLogs();
+    } catch (err: any) {
+      setScanResult({ success: false, errors: [err?.message || "Failed to broadcast expired SMS"] });
+    } finally {
+      setBroadcastingExpired(false);
     }
   }
 
@@ -538,20 +581,36 @@ export default function SmsSettingsPage() {
                 Trigger scan now without waiting for cron
               </p>
             </div>
-            <button
-              onClick={handleTriggerScanNow}
-              disabled={scanningNow}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              {scanningNow ? (
-                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              )}
-              <span>Scan Now</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleTriggerScanNow}
+                disabled={scanningNow || broadcastingExpired}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                title="Runs standard milestone scan for upcoming and new expiries"
+              >
+                {scanningNow ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
+                <span>Scan Now</span>
+              </button>
+
+              <button
+                onClick={handleSendAllExpiredNow}
+                disabled={scanningNow || broadcastingExpired}
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                title="Sends the Expired Template to all past expired domains"
+              >
+                {broadcastingExpired ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span>⚠️ All Expired</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1457,6 +1516,33 @@ export default function SmsSettingsPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* One-time Broadcast Banner for Expired Domains */}
+                {templateSubTab === "expired" && (
+                  <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                        <span>🚀</span>
+                        <span>Send this Expired Message to ALL Expired Domains Now</span>
+                      </span>
+                      <p className="text-amber-700 dark:text-amber-300 text-[11px] mt-0.5">
+                        Dispatches this template to every institution whose domain is currently expired.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSendAllExpiredNow}
+                      disabled={broadcastingExpired || scanningNow}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      {broadcastingExpired ? (
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span>✉️ Send to ALL Expired Now</span>
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 {/* Textarea */}
                 <div className="space-y-2">

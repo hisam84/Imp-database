@@ -175,6 +175,7 @@ function getValidRecipients(inst: any, settings: SmsSettings): { phone: string; 
  */
 export async function checkAndSendSmsExpiryAlerts(options?: {
   force?: boolean;
+  allExpired?: boolean;
 }): Promise<SmsExpiryCheckResult> {
   const result: SmsExpiryCheckResult = {
     checkedWebsites: 0,
@@ -207,7 +208,7 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
   const now = new Date();
   const milestones = [...settings.expiryDaysMilestones].sort((a, b) => b - a); // descending
 
-  if (milestones.length === 0 && !settings.sendExpiredAlerts) {
+  if (milestones.length === 0 && !settings.sendExpiredAlerts && !options?.allExpired) {
     result.errors.push("No expiry reminder milestones configured in SMS settings.");
     return result;
   }
@@ -249,9 +250,20 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
       const dateStr = expDate.toISOString().slice(0, 10);
 
-      // CASE A: DOMAIN IS ALREADY EXPIRED (Day 0 or Day -1)
-      if (diffDays === 0 || diffDays === -1) {
-        if (!settings.sendExpiredAlerts) {
+      // If allExpired is specifically requested, only process expired domains (diffDays <= 0)
+      if (options?.allExpired && diffDays > 0) {
+        continue;
+      }
+
+      // CASE A: DOMAIN IS ALREADY EXPIRED
+      // In allExpired mode: all domains where diffDays <= 0
+      // In standard mode: Day 0 or Day -1
+      const isExpiredMatch = options?.allExpired
+        ? diffDays <= 0
+        : (diffDays === 0 || diffDays === -1);
+
+      if (isExpiredMatch) {
+        if (!options?.allExpired && !settings.sendExpiredAlerts) {
           continue;
         }
 

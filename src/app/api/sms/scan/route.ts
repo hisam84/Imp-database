@@ -10,18 +10,20 @@ export async function POST(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
     const reset = searchParams.get("reset") === "true";
+    const allExpired = searchParams.get("allExpired") === "true";
     const force = searchParams.get("force") === "true" || reset || true; // Manual scan always forces
 
     if (reset) {
       await clearPersistedSmsExpiryAlerts();
     }
 
-    const result = await checkAndSendSmsExpiryAlerts({ force });
+    const result = await checkAndSendSmsExpiryAlerts({ force, allExpired });
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       forced: force,
+      allExpired,
       checkedWebsites: result.checkedWebsites,
       smsSent: result.smsSent,
       smsFailed: result.smsFailed,
