@@ -208,6 +208,13 @@ export function InstitutionForm({
     if (customValues.callUpdates || (initial?.customFields as any)?.callUpdates) {
       cleanedCustom.callUpdates = customValues.callUpdates || (initial?.customFields as any)?.callUpdates;
     }
+    const existingCommLogs =
+      customValues.communicationLogs ||
+      (initial?.customFields as any)?.communicationLogs ||
+      initial?.communicationLogs;
+    if (existingCommLogs && Array.isArray(existingCommLogs)) {
+      cleanedCustom.communicationLogs = existingCommLogs;
+    }
     activeKeys.forEach((key) => {
       const v = customValues[key];
       if (v !== undefined && v !== null && String(v).trim() !== "") {

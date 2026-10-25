@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { buildInstitutionData } from "@/lib/institution";
 
 import { computeStatus } from "@/lib/types";
+import { loadSiteSettingsPayload } from "@/lib/siteSettingsStorage";
 
 // GET /api/institutions?search=&type=&category=&subDistrict=&district=&status=
 export async function GET(req: NextRequest) {
@@ -78,8 +79,133 @@ export async function GET(req: NextRequest) {
       orderBy: { instituteName: "asc" },
     });
 
+    // Load global logs to ensure institutions have real-time merged communication logs
+    let globalCommLogs: any[] = [];
+    try {
+      const rawComm = await loadSiteSettingsPayload("recent_communication_logs");
+      if (rawComm) {
+        const parsed = JSON.parse(rawComm);
+        if (Array.isArray(parsed.logs)) globalCommLogs = parsed.logs;
+      }
+    } catch {}
+
+    let globalSmsLogs: any[] = [];
+    try {
+      const rawSms = await loadSiteSettingsPayload("recent_sms_logs");
+      if (rawSms) {
+        const parsed = JSON.parse(rawSms);
+        if (Array.isArray(parsed.logs)) globalSmsLogs = parsed.logs;
+      }
+    } catch {}
+
+    const commByInstId = new Map<string, any[]>();
+    const commByDomain = new Map<string, any[]>();
+    const commByName = new Map<string, any[]>();
+
+    for (const log of globalCommLogs) {
+      if (!log) continue;
+      if (log.institutionId) {
+        if (!commByInstId.has(log.institutionId)) commByInstId.set(log.institutionId, []);
+        commByInstId.get(log.institutionId)!.push(log);
+      }
+      if (log.domain) {
+        const d = String(log.domain).trim().toLowerCase();
+        if (!commByDomain.has(d)) commByDomain.set(d, []);
+        commByDomain.get(d)!.push(log);
+      }
+      if (log.institutionName) {
+        const n = String(log.institutionName).trim().toLowerCase();
+        if (!commByName.has(n)) commByName.set(n, []);
+        commByName.get(n)!.push(log);
+      }
+    }
+
+    for (const sms of globalSmsLogs) {
+      if (!sms) continue;
+      const mappedSms = {
+        id: sms.id || `sms_${sms.timestamp}_${Math.random().toString(36).slice(2, 6)}`,
+        type: "SMS",
+        institutionId: sms.institutionId,
+        institutionName: sms.institutionName,
+        domain: sms.domain,
+        recipient: sms.recipientPhone,
+        recipientLabel: sms.recipientLabel || "Phone",
+        subject:
+          sms.milestoneDays === 0
+            ? "Domain Expired SMS Alert"
+            : `Domain Expiry Reminder (${sms.milestoneDays} Days)`,
+        content: sms.messageText,
+        status: sms.status === "SUCCESS" ? "SUCCESS" : "FAILED",
+        trigger:
+          sms.milestoneDays === 0
+            ? "Domain Expired Alert"
+            : `Expiry Alert (${sms.milestoneDays} Days)`,
+        milestoneDays: sms.milestoneDays,
+        error: sms.error || null,
+        createdAt: sms.timestamp || new Date().toISOString(),
+      };
+
+      if (sms.institutionId) {
+        if (!commByInstId.has(sms.institutionId)) commByInstId.set(sms.institutionId, []);
+        commByInstId.get(sms.institutionId)!.push(mappedSms);
+      }
+      if (sms.domain) {
+        const d = String(sms.domain).trim().toLowerCase();
+        if (!commByDomain.has(d)) commByDomain.set(d, []);
+        commByDomain.get(d)!.push(mappedSms);
+      }
+      if (sms.institutionName) {
+        const n = String(sms.institutionName).trim().toLowerCase();
+        if (!commByName.has(n)) commByName.set(n, []);
+        commByName.get(n)!.push(mappedSms);
+      }
+    }
+
     let mapped = institutions.map((inst: any) => {
-      const cf = (inst.customFields as any) || {};
+      const cf =
+        inst.customFields && typeof inst.customFields === "object"
+          ? (inst.customFields as any)
+          : typeof inst.customFields === "string"
+          ? (() => {
+              try {
+                return JSON.parse(inst.customFields);
+              } catch {
+                return {};
+              }
+            })()
+          : {};
+
+      const directLogs: any[] = Array.isArray(cf.communicationLogs) ? cf.communicationLogs : [];
+      const logMap = new Map<string, any>();
+      for (const l of directLogs) {
+        if (l && l.id) logMap.set(l.id, l);
+      }
+
+      if (commByInstId.has(inst.id)) {
+        for (const l of commByInstId.get(inst.id)!) {
+          if (l && l.id && !logMap.has(l.id)) logMap.set(l.id, l);
+        }
+      }
+      if (inst.domain) {
+        const d = String(inst.domain).trim().toLowerCase();
+        if (commByDomain.has(d)) {
+          for (const l of commByDomain.get(d)!) {
+            if (l && l.id && !logMap.has(l.id)) logMap.set(l.id, l);
+          }
+        }
+      }
+      if (inst.instituteName) {
+        const n = String(inst.instituteName).trim().toLowerCase();
+        if (commByName.has(n)) {
+          for (const l of commByName.get(n)!) {
+            if (l && l.id && !logMap.has(l.id)) logMap.set(l.id, l);
+          }
+        }
+      }
+
+      const mergedLogs = Array.from(logMap.values());
+      mergedLogs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
       return {
         ...inst,
         inChargeTeacher2:
@@ -95,7 +221,7 @@ export async function GET(req: NextRequest) {
           cf["IN CHARGE 2 CONTACT"] ||
           null,
         googleMapsUrl: cf.googleMapsUrl || null,
-        communicationLogs: Array.isArray(cf.communicationLogs) ? cf.communicationLogs : [],
+        communicationLogs: mergedLogs,
       };
     });
 

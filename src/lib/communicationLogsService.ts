@@ -33,11 +33,22 @@ export async function logInstitutionCommunication(
       createdAt: entry.createdAt || new Date().toISOString(),
     };
 
+    let targetInstId = entry.institutionId;
+    if (!targetInstId && entry.domain) {
+      try {
+        const found = await (prisma as any).institution.findFirst({
+          where: { domain: entry.domain, deletedAt: null },
+          select: { id: true },
+        });
+        if (found) targetInstId = found.id;
+      } catch {}
+    }
+
     // 1. Persist directly onto the institution record under customFields.communicationLogs
-    if (entry.institutionId) {
+    if (targetInstId) {
       try {
         const inst = await (prisma as any).institution.findUnique({
-          where: { id: entry.institutionId },
+          where: { id: targetInstId },
           select: { id: true, customFields: true },
         });
 
@@ -45,6 +56,14 @@ export async function logInstitutionCommunication(
           const currentCf =
             inst.customFields && typeof inst.customFields === "object"
               ? (inst.customFields as any)
+              : typeof inst.customFields === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(inst.customFields);
+                  } catch {
+                    return {};
+                  }
+                })()
               : {};
           const existingLogs: CommunicationLog[] = Array.isArray(currentCf.communicationLogs)
             ? currentCf.communicationLogs
@@ -53,7 +72,7 @@ export async function logInstitutionCommunication(
           const updatedLogs = [fullLog, ...existingLogs].slice(0, MAX_INSTITUTION_LOGS);
 
           await (prisma as any).institution.update({
-            where: { id: entry.institutionId },
+            where: { id: targetInstId },
             data: {
               customFields: {
                 ...currentCf,
@@ -63,7 +82,7 @@ export async function logInstitutionCommunication(
           });
         }
       } catch (instErr: any) {
-        console.warn(`Could not attach log to institution ${entry.institutionId}:`, instErr?.message);
+        console.warn(`Could not attach log to institution ${targetInstId}:`, instErr?.message);
       }
     }
 
@@ -106,9 +125,10 @@ export async function logInstitutionCommunication(
 export async function getInstitutionCommunicationLogs(institutionId: string): Promise<CommunicationLog[]> {
   const mergedMap = new Map<string, CommunicationLog>();
 
+  let inst: any = null;
   // 1. Load from institution.customFields.communicationLogs
   try {
-    const inst = await (prisma as any).institution.findUnique({
+    inst = await (prisma as any).institution.findUnique({
       where: { id: institutionId },
       select: { id: true, instituteName: true, domain: true, customFields: true },
     });
@@ -134,13 +154,19 @@ export async function getInstitutionCommunicationLogs(institutionId: string): Pr
       const data = JSON.parse(rawSms);
       if (Array.isArray(data.logs)) {
         for (const entry of data.logs) {
-          if (entry && (entry.institutionId === institutionId || (!entry.institutionId && entry.id))) {
+          if (!entry) continue;
+          const isMatch =
+            entry.institutionId === institutionId ||
+            (inst?.domain && entry.domain && entry.domain.trim().toLowerCase() === inst.domain.trim().toLowerCase()) ||
+            (inst?.instituteName && entry.institutionName && entry.institutionName.trim().toLowerCase() === inst.instituteName.trim().toLowerCase());
+
+          if (isMatch) {
             const mappedLog: CommunicationLog = {
               id: entry.id || `sms_${entry.timestamp}_${Math.random().toString(36).slice(2, 6)}`,
               type: "SMS",
               institutionId: entry.institutionId || institutionId,
-              institutionName: entry.institutionName || "Institution",
-              domain: entry.domain || null,
+              institutionName: entry.institutionName || inst?.instituteName || "Institution",
+              domain: entry.domain || inst?.domain || null,
               recipient: entry.recipientPhone,
               recipientLabel: entry.recipientLabel || "Phone",
               subject:
@@ -177,7 +203,13 @@ export async function getInstitutionCommunicationLogs(institutionId: string): Pr
       const data = JSON.parse(rawComm);
       if (Array.isArray(data.logs)) {
         for (const log of data.logs) {
-          if (log && log.institutionId === institutionId) {
+          if (!log) continue;
+          const isMatch =
+            log.institutionId === institutionId ||
+            (inst?.domain && log.domain && log.domain.trim().toLowerCase() === inst.domain.trim().toLowerCase()) ||
+            (inst?.instituteName && log.institutionName && log.institutionName.trim().toLowerCase() === inst.instituteName.trim().toLowerCase());
+
+          if (isMatch) {
             if (!mergedMap.has(log.id)) {
               mergedMap.set(log.id, log);
             }

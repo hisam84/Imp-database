@@ -195,6 +195,52 @@ function InstitutionsLedgerContent() {
     );
   }
 
+  function handleCommunicationLogsUpdated(instId: string, updatedLogs: any[]) {
+    setInstitutions((prev) =>
+      prev.map((inst) =>
+        inst.id === instId
+          ? {
+              ...inst,
+              communicationLogs: updatedLogs,
+              customFields: {
+                ...(inst.customFields || {}),
+                communicationLogs: updatedLogs,
+              },
+            }
+          : inst
+      )
+    );
+    setAllInstitutions((prev) =>
+      prev.map((inst) =>
+        inst.id === instId
+          ? {
+              ...inst,
+              communicationLogs: updatedLogs,
+              customFields: {
+                ...(inst.customFields || {}),
+                communicationLogs: updatedLogs,
+              },
+            }
+          : inst
+      )
+    );
+  }
+
+  // Real-time synchronization when tab gets focus or when background alert scan completes
+  useEffect(() => {
+    function handleSync() {
+      loadAll();
+      loadFiltered();
+    }
+    window.addEventListener("focus", handleSync);
+    window.addEventListener("institution-logs-updated", handleSync);
+    return () => {
+      window.removeEventListener("focus", handleSync);
+      window.removeEventListener("institution-logs-updated", handleSync);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
   const total = allInstitutions.length;
 
   const pageActions = (
@@ -274,6 +320,7 @@ function InstitutionsLedgerContent() {
             setShowTaskModal(true);
           }}
           onCallUpdateAdded={handleCallUpdateAdded}
+          onCommunicationLogsUpdated={handleCommunicationLogsUpdated}
         />
       )}
 

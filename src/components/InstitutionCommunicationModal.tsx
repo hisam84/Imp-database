@@ -6,6 +6,7 @@ import { formatDhakaDate } from "@/lib/dateUtils";
 interface Props {
   inst: Institution;
   onClose: () => void;
+  onLogsUpdated?: (institutionId: string, updatedLogs: CommunicationLog[]) => void;
 }
 
 function formatLogTimestamp(dateStr: string) {
@@ -25,7 +26,7 @@ function formatLogTimestamp(dateStr: string) {
   }
 }
 
-export function InstitutionCommunicationModal({ inst, onClose }: Props) {
+export function InstitutionCommunicationModal({ inst, onClose, onLogsUpdated }: Props) {
   const [logs, setLogs] = useState<CommunicationLog[]>(() => {
     const cf = (inst.customFields as any) || {};
     if (Array.isArray(inst.communicationLogs)) return inst.communicationLogs;
@@ -58,6 +59,9 @@ export function InstitutionCommunicationModal({ inst, onClose }: Props) {
       const data = await res.json();
       if (Array.isArray(data.logs)) {
         setLogs(data.logs);
+        if (onLogsUpdated) {
+          onLogsUpdated(inst.id, data.logs);
+        }
       }
     } catch (err: any) {
       setError(err?.message || "Could not retrieve logs from server");

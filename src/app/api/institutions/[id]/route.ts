@@ -2,10 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildInstitutionData } from "@/lib/institution";
 
+import { getInstitutionCommunicationLogs } from "@/lib/communicationLogsService";
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const institution = await prisma.institution.findUnique({ where: { id: params.id } });
   if (!institution) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const cf = (institution.customFields as any) || {};
+  const cf =
+    institution.customFields && typeof institution.customFields === "object"
+      ? (institution.customFields as any)
+      : typeof institution.customFields === "string"
+      ? (() => {
+          try {
+            return JSON.parse(institution.customFields);
+          } catch {
+            return {};
+          }
+        })()
+      : {};
+
+  const communicationLogs = await getInstitutionCommunicationLogs(params.id);
+
   return NextResponse.json({
     ...institution,
     inChargeTeacher2:
@@ -21,7 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       cf["IN CHARGE 2 CONTACT"] ||
       null,
     googleMapsUrl: cf.googleMapsUrl || null,
-    communicationLogs: Array.isArray(cf.communicationLogs) ? cf.communicationLogs : [],
+    communicationLogs,
   });
 }
 
@@ -71,6 +87,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const data = buildInstitutionData(body);
     const updated = await prisma.institution.update({ where: { id: params.id }, data });
     const cf = (updated.customFields as any) || {};
+    const commLogs = await getInstitutionCommunicationLogs(params.id);
     return NextResponse.json({
       ...updated,
       inChargeTeacher2:
@@ -86,6 +103,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         cf["IN CHARGE 2 CONTACT"] ||
         null,
       googleMapsUrl: cf.googleMapsUrl || null,
+      communicationLogs: commLogs,
     });
   } catch (err) {
     return NextResponse.json({ error: "Institution not found." }, { status: 404 });

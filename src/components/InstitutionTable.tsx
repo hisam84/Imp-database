@@ -11,6 +11,7 @@ import {
   STATUS_COLOR,
   STATUS_LABEL,
   CallUpdate,
+  CommunicationLog,
 } from "@/lib/types";
 import { Badge, Button } from "./ui";
 import { CustomFieldDef } from "@/lib/types";
@@ -314,13 +315,11 @@ function ActionMenu({
                     </svg>
                     <span>Call Update</span>
                   </div>
-                  <span
-                    className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
-                      callCount > 0 ? "bg-amber-500 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    {callCount}
-                  </span>
+                  {callCount > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[10px] font-bold bg-amber-500 text-white shadow-xs">
+                      {callCount > 99 ? "99+" : callCount}
+                    </span>
+                  )}
                 </button>
               )}
 
@@ -339,13 +338,11 @@ function ActionMenu({
                     </svg>
                     <span>Email & SMS Logs</span>
                   </div>
-                  <span
-                    className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
-                      commCount.total > 0 ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    {commCount.total}
-                  </span>
+                  {commCount.total > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[10px] font-bold bg-blue-600 text-white shadow-xs">
+                      {commCount.total > 99 ? "99+" : commCount.total}
+                    </span>
+                  )}
                 </button>
               )}
 
@@ -441,6 +438,7 @@ export function InstitutionTable({
   onAddTask,
   onToggleDeactivate,
   onCallUpdateAdded,
+  onCommunicationLogsUpdated,
 }: {
   institutions: Institution[];
   customFieldDefs: CustomFieldDef[];
@@ -449,12 +447,14 @@ export function InstitutionTable({
   onAddTask?: (i: Institution) => void;
   onToggleDeactivate?: (i: Institution) => void;
   onCallUpdateAdded?: (instId: string, updatedList: CallUpdate[]) => void;
+  onCommunicationLogsUpdated?: (instId: string, updatedLogs: CommunicationLog[]) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<number | "all">(25);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [selectedCallInst, setSelectedCallInst] = useState<Institution | null>(null);
   const [selectedLogsInst, setSelectedLogsInst] = useState<Institution | null>(null);
+  const [commLogsOverrides, setCommLogsOverrides] = useState<Record<string, CommunicationLog[]>>({});
 
   const totalCount = institutions.length;
   const effectivePageSize = pageSize === "all" ? (totalCount || 1) : pageSize;
@@ -522,7 +522,7 @@ export function InstitutionTable({
           const domainUrl = getDomainUrl(inst.domain);
           const serialNumber = startIndex + index + 1;
           const callCount = getCallCount(inst);
-          const commCount = getCommunicationCount(inst);
+          const commCount = getCommunicationCount(inst, commLogsOverrides);
 
           return (
             <div
@@ -604,21 +604,17 @@ export function InstitutionTable({
                         e.stopPropagation();
                         setSelectedCallInst(inst);
                       }}
-                      className="flex-1 py-2 px-2.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
+                      className="relative flex-1 py-2 px-2.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
                     >
                       <svg className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                       <span>Call</span>
-                      <span
-                        className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
-                          callCount > 0
-                            ? "bg-amber-500 text-white"
-                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                        }`}
-                      >
-                        {callCount}
-                      </span>
+                      {callCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] px-1 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white shadow-xs ring-2 ring-white dark:ring-slate-900 pointer-events-none">
+                          {callCount > 99 ? "99+" : callCount}
+                        </span>
+                      )}
                     </button>
 
                     <button
@@ -627,21 +623,17 @@ export function InstitutionTable({
                         e.stopPropagation();
                         setSelectedLogsInst(inst);
                       }}
-                      className="flex-1 py-2 px-2.5 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
+                      className="relative flex-1 py-2 px-2.5 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
                     >
                       <svg className="w-3.5 h-3.5 shrink-0 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
                       <span>Logs</span>
-                      <span
-                        className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
-                          commCount.total > 0
-                            ? "bg-blue-600 text-white shadow-blue-500/25"
-                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                        }`}
-                      >
-                        {commCount.total}
-                      </span>
+                      {commCount.total > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] px-1 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-xs ring-2 ring-white dark:ring-slate-900 pointer-events-none">
+                          {commCount.total > 99 ? "99+" : commCount.total}
+                        </span>
+                      )}
                     </button>
 
                     {onAddTask && (
@@ -805,7 +797,7 @@ export function InstitutionTable({
               const domainUrl = getDomainUrl(inst.domain);
               const serialNumber = startIndex + index + 1;
               const callCount = getCallCount(inst);
-              const commCount = getCommunicationCount(inst);
+              const commCount = getCommunicationCount(inst, commLogsOverrides);
 
               return (
                 <Fragment key={inst.id}>
@@ -871,14 +863,14 @@ export function InstitutionTable({
                       <Badge className={STATUS_COLOR[status]}>{STATUS_LABEL[status]}</Badge>
                     </td>
                     <td className="w-44 px-3 py-3 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5 justify-center">
+                      <div className="inline-flex items-center gap-2 justify-center">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedCallInst(inst);
                           }}
-                          className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
+                          className={`relative inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
                             callCount > 0
                               ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50"
                               : "bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -886,7 +878,7 @@ export function InstitutionTable({
                           title="View & Log Call Updates"
                         >
                           <svg
-                            className={`w-3.5 h-3.5 ${callCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-400"}`}
+                            className={`w-3.5 h-3.5 shrink-0 ${callCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-400"}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -899,15 +891,11 @@ export function InstitutionTable({
                             />
                           </svg>
                           <span>Call</span>
-                          <span
-                            className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
-                              callCount > 0
-                                ? "bg-amber-500 text-white"
-                                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                            }`}
-                          >
-                            {callCount}
-                          </span>
+                          {callCount > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] px-1 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white shadow-xs ring-2 ring-white dark:ring-slate-900 pointer-events-none">
+                              {callCount > 99 ? "99+" : callCount}
+                            </span>
+                          )}
                         </button>
 
                         <button
@@ -916,7 +904,7 @@ export function InstitutionTable({
                             e.stopPropagation();
                             setSelectedLogsInst(inst);
                           }}
-                          className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
+                          className={`relative inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
                             commCount.total > 0
                               ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/50"
                               : "bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -924,7 +912,7 @@ export function InstitutionTable({
                           title="View Email & SMS Sent Logs"
                         >
                           <svg
-                            className={`w-3.5 h-3.5 ${commCount.total > 0 ? "text-blue-600 dark:text-blue-400" : "text-slate-400"}`}
+                            className={`w-3.5 h-3.5 shrink-0 ${commCount.total > 0 ? "text-blue-600 dark:text-blue-400" : "text-slate-400"}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -937,15 +925,11 @@ export function InstitutionTable({
                             />
                           </svg>
                           <span>Logs</span>
-                          <span
-                            className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
-                              commCount.total > 0
-                                ? "bg-blue-600 text-white shadow-blue-500/25"
-                                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                            }`}
-                          >
-                            {commCount.total}
-                          </span>
+                          {commCount.total > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] px-1 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-xs ring-2 ring-white dark:ring-slate-900 pointer-events-none">
+                              {commCount.total > 99 ? "99+" : commCount.total}
+                            </span>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -1151,6 +1135,27 @@ export function InstitutionTable({
         <InstitutionCommunicationModal
           inst={selectedLogsInst}
           onClose={() => setSelectedLogsInst(null)}
+          onLogsUpdated={(instId, updatedLogs) => {
+            setCommLogsOverrides((prev) => ({
+              ...prev,
+              [instId]: updatedLogs,
+            }));
+            setSelectedLogsInst((prev) =>
+              prev && prev.id === instId
+                ? {
+                    ...prev,
+                    communicationLogs: updatedLogs,
+                    customFields: {
+                      ...(prev.customFields || {}),
+                      communicationLogs: updatedLogs,
+                    },
+                  }
+                : prev
+            );
+            if (onCommunicationLogsUpdated) {
+              onCommunicationLogsUpdated(instId, updatedLogs);
+            }
+          }}
         />
       )}
     </div>
@@ -1164,9 +1169,15 @@ function getCallCount(inst: Institution): number {
   return 0;
 }
 
-function getCommunicationCount(inst: Institution): { total: number; email: number; sms: number } {
+function getCommunicationCount(
+  inst: Institution,
+  overrides?: Record<string, CommunicationLog[]>
+): { total: number; email: number; sms: number } {
+  const overridden = overrides && overrides[inst.id];
   const cf = (inst.customFields as any) || {};
-  const logs = Array.isArray(inst.communicationLogs)
+  const logs = Array.isArray(overridden)
+    ? overridden
+    : Array.isArray(inst.communicationLogs)
     ? inst.communicationLogs
     : Array.isArray(cf.communicationLogs)
     ? cf.communicationLogs
