@@ -381,7 +381,7 @@ export default function MailSettingsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>SMTP Server Setup (সুপার এডমিন)</span>
+            <span>SMTP Server Setup (Super Admin)</span>
             {smtpConfig.isEnabled ? (
               <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 Custom SMTP
@@ -503,7 +503,7 @@ export default function MailSettingsPage() {
             <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  Quick Server Presets (এক ক্লিকে প্রিসেট সেট করুন)
+                  Quick Server Presets
                 </span>
                 <span className="text-[11px] text-slate-500">
                   Click to auto-fill host, port and security
@@ -756,10 +756,10 @@ export default function MailSettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      Application Live URL / Domain (ইমেইল টেমপ্লেট ও নোটিফিকেশন লিংক)
+                      Application Live URL / Domain (Email & Notification Links)
                     </label>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      ইমেইলে পাঠানো ড্যাশবোর্ড বাটন, টাস্ক লিংক ও ফুটার ডোমেইনে এই লিংকটি ব্যবহার হবে (যেমন: VPS IP বা নিজস্ব ডোমেইন)।
+                      This URL is used in email dashboard buttons, task links, and footer links (e.g. VPS IP or custom domain).
                     </p>
                   </div>
                   <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
@@ -774,7 +774,7 @@ export default function MailSettingsPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                  ফাঁকা রাখলে এনভায়রনমেন্ট ভেরিয়েবল <code>APP_URL</code> বা <code>NEXT_PUBLIC_APP_URL</code> অটোমেটিক কার্যকর হবে (এবং /database পাথ নিশ্চিত করবে)।
+                  If left empty, environment variables <code>APP_URL</code> or <code>NEXT_PUBLIC_APP_URL</code> will be used automatically (ensuring the /database path).
                 </p>
               </div>
 
@@ -829,7 +829,7 @@ export default function MailSettingsPage() {
                       <span>Saving SMTP Settings...</span>
                     </>
                   ) : (
-                    <span>Save SMTP Configuration (সংরক্ষণ করুন)</span>
+                    <span>Save SMTP Configuration</span>
                   )}
                 </button>
               </div>

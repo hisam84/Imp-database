@@ -265,7 +265,7 @@ export function SoftwareManagementModal({ onClose, onChanged }: SoftwareManageme
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Default Price (৳)
+                  Default Price (BDT)
                 </label>
                 <input
                   type="number"
@@ -361,7 +361,7 @@ export function SoftwareManagementModal({ onClose, onChanged }: SoftwareManageme
                         <td className="p-3">{sw.category || "—"}</td>
                         <td className="p-3 font-mono font-medium">
                           {sw.defaultPrice !== undefined && sw.defaultPrice !== null
-                            ? `৳ ${sw.defaultPrice.toLocaleString()}`
+                            ? `BDT ${sw.defaultPrice.toLocaleString()}`
                             : "Flexible"}
                         </td>
                         <td className="p-3 font-bold text-blue-600 dark:text-blue-400">

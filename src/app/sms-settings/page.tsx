@@ -391,7 +391,7 @@ export default function SmsSettingsPage() {
   // Calculate SMS parts for expiring reminder template
   const sampleExpiringRendered = renderSmsTemplate(settings.template, {
     instituteName: "Dhaka Model School & College",
-    instituteNameBangla: "ঢাকা মডেল স্কুল অ্যান্ড কলেজ",
+    instituteNameBangla: "Dhaka Model School & College (Bengali)",
     domain: "dhakamodel.edu.bd",
     expireDate: new Date(Date.now() + 7 * 86400000),
     daysRemaining: 7,
@@ -406,7 +406,7 @@ export default function SmsSettingsPage() {
     settings.expiredTemplate || DEFAULT_EXPIRED_SMS_TEMPLATE,
     {
       instituteName: "Dhaka Model School & College",
-      instituteNameBangla: "ঢাকা মডেল স্কুল অ্যান্ড কলেজ",
+      instituteNameBangla: "Dhaka Model School & College (Bengali)",
       domain: "dhakamodel.edu.bd",
       expireDate: new Date(Date.now() - 1 * 86400000), // expired yesterday
       daysRemaining: 0,
@@ -632,7 +632,7 @@ export default function SmsSettingsPage() {
                   {diagnoseResult.serverOutboundIp || "Unknown"}
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  (আপনার সার্ভারের পাবলিক আইপি)
+                  (Your Server Public IP)
                 </div>
               </div>
 
@@ -663,7 +663,7 @@ export default function SmsSettingsPage() {
 
             {diagnoseResult.recommendedAction && (
               <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200">
-                <span className="font-bold block mb-1">📌 সুপারিশকৃত সমাধান (Recommended Action):</span>
+                <span className="font-bold block mb-1">📌 Recommended Action:</span>
                 <p className="text-[11px] leading-relaxed">
                   {diagnoseResult.recommendedAction}
                 </p>
@@ -708,14 +708,14 @@ export default function SmsSettingsPage() {
                   <div className="flex items-center justify-between font-bold text-xs">
                     <span className="flex items-center gap-1.5 text-amber-900 dark:text-amber-100">
                       <span>🛡️</span>
-                      <span>আইপি অনুমোদনের সমাধান (IP Whitelist Required):</span>
+                      <span>IP Whitelist Required:</span>
                     </span>
                     {serverPublicIp && (
                       <button
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(serverPublicIp);
-                          alert(`সার্ভার আইপি (${serverPublicIp}) ক্লিপবোর্ডে কপি করা হয়েছে!`);
+                          alert(`Server IP (${serverPublicIp}) copied to clipboard!`);
                         }}
                         className="px-2.5 py-1 rounded bg-[#0D47A1] text-white hover:bg-blue-700 font-mono text-[11px] font-bold cursor-pointer transition-colors shadow-xs"
                       >
@@ -724,12 +724,7 @@ export default function SmsSettingsPage() {
                     )}
                   </div>
                   <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
-                    ADN SMS আপনার নিরাপত্তা নিশ্চিত করতে শুধুমাত্র হোয়াইটলিস্টে থাকা আইপি থেকে রিকোয়েস্ট গ্রহণ করে।{" "}
-                    <strong>portal.adnsms.com</strong>-এ লগইন করে <strong>API Settings / IP Whitelist</strong> মেন্যুতে যান এবং আপনার সার্ভারের পাবলিক আইপি{" "}
-                    <strong className="font-mono bg-amber-100 dark:bg-amber-900/40 px-1 py-0.5 rounded text-amber-900 dark:text-amber-100">
-                      {serverPublicIp || "লিস্টেড আইপি"}
-                    </strong>{" "}
-                    যুক্ত করুন। আইপি যুক্ত করার পর অবিলম্বে গেটওয়ে সচল হয়ে যাবে।
+                    To secure your SMS dispatches, ensure your server public IP is added to the IP Whitelist in your SMS provider account portal (portal.adnsms.com or qsms.com.bd). Once whitelisted, the gateway will activate immediately.
                   </p>
                 </div>
               )}
@@ -841,13 +836,13 @@ export default function SmsSettingsPage() {
                 <div className="flex items-center justify-between font-bold">
                   <span className="flex items-center gap-1.5 text-emerald-900 dark:text-emerald-100">
                     <span>⚡</span>
-                    <span>QSMS API তথ্য সংগ্রহের নিয়ম:</span>
+                    <span>QSMS API Integration Guide:</span>
                   </span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-emerald-900 dark:text-emerald-300">
-                  ১. <strong>qsms.com.bd</strong>-এ আপনার একাউন্টে লগইন করুন।<br />
-                  ২. <strong>API / Developer Hub</strong> সেকশন থেকে আপনার <strong>API Key</strong> এবং <strong>API Secret</strong> কপি করে নিচের বক্সে পেস্ট করুন।<br />
-                  ৩. আপনার অনুমোদিত <strong>Sender ID</strong> (যেমন: <code className="bg-emerald-100 dark:bg-emerald-900/60 px-1 rounded">Imperial IT</code>) বসিয়ে সেভ করুন।
+                  1. Log in to your account at <strong>qsms.com.bd</strong>.<br />
+                  2. Copy your <strong>API Key</strong> and <strong>API Secret</strong> from the <strong>API / Developer Hub</strong> and paste them below.<br />
+                  3. Enter your approved <strong>Sender ID</strong> (e.g. <code className="bg-emerald-100 dark:bg-emerald-900/60 px-1 rounded">Imperial IT</code>) and click Save.
                 </p>
               </div>
 

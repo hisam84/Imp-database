@@ -18,6 +18,7 @@ import {
 import {
   type SmsLogEntry,
 } from "./smsShared";
+import { logInstitutionCommunication } from "@/lib/communicationLogsService";
 
 export type { SmsLogEntry };
 
@@ -334,6 +335,25 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
               error: sendRes.error || null,
             };
 
+            // Log communication under institution
+            await logInstitutionCommunication({
+              id: logItem.id,
+              type: "SMS",
+              institutionId: inst.id,
+              institutionName: inst.instituteName,
+              domain: inst.domain,
+              recipient: recipient.phone,
+              recipientName: inst.instituteHead || undefined,
+              recipientLabel: recipient.label,
+              subject: "Domain Expired SMS Alert",
+              content: messageBody,
+              status: sendRes.success ? "SUCCESS" : "FAILED",
+              trigger: "Domain Expired Alert",
+              milestoneDays: 0,
+              error: sendRes.error || null,
+              createdAt: logItem.timestamp,
+            });
+
             newLogs.push(logItem);
             result.logs.push(logItem);
 
@@ -435,6 +455,25 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
                 apiResponseMessage: sendRes.apiResponseMessage,
                 error: sendRes.error || null,
               };
+
+              // Log communication under institution
+              await logInstitutionCommunication({
+                id: logItem.id,
+                type: "SMS",
+                institutionId: inst.id,
+                institutionName: inst.instituteName,
+                domain: inst.domain,
+                recipient: recipient.phone,
+                recipientName: inst.instituteHead || undefined,
+                recipientLabel: recipient.label,
+                subject: `Domain Expiry Reminder (${milestone} Days)`,
+                content: messageBody,
+                status: sendRes.success ? "SUCCESS" : "FAILED",
+                trigger: `Expiry Alert (${milestone} Days)`,
+                milestoneDays: milestone,
+                error: sendRes.error || null,
+                createdAt: logItem.timestamp,
+              });
 
               newLogs.push(logItem);
               result.logs.push(logItem);

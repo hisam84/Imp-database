@@ -8,6 +8,7 @@ import {
   sendWebsiteExpiryAlertEmail,
   sendCompanySubscriptionExpiryAlertEmail,
 } from "@/lib/mailer";
+import { logInstitutionCommunication } from "@/lib/communicationLogsService";
 
 // In-memory set for rapid deduplication
 const sentWebsiteAlertsMemory = new Set<string>();
@@ -210,6 +211,23 @@ export async function checkAndSendExpiryAlerts(options?: {
               recipientEmail: targetEmail,
               recipientName: inst.instituteHead || inst.instituteName,
               adminEmailCopy: adminCopy,
+            });
+
+            // Automatically log communication under institution
+            await logInstitutionCommunication({
+              type: "EMAIL",
+              institutionId: inst.id,
+              institutionName: inst.instituteName,
+              domain: inst.domain,
+              recipient: targetEmail,
+              recipientName: inst.instituteHead || inst.instituteName,
+              recipientLabel: hasClientEmail ? "Registered Contact Email" : "Admin Alert Copy",
+              subject: `${(inst.category || "").toLowerCase() === "software" ? "Software" : "Website"} License Expiry Notice: ${inst.domain || inst.instituteName} (${diffDays} days remaining)`,
+              content: `Automated expiry notice dispatched to ${targetEmail} for ${inst.instituteName} (${inst.domain || "No domain"}). Scheduled expiration: ${expDate.toISOString().slice(0, 10)} (${diffDays} days remaining).`,
+              status: sendRes.success ? "SUCCESS" : "FAILED",
+              trigger: diffDays <= 0 ? "Domain Expired Alert" : `Expiry Alert (${diffDays} Days)`,
+              milestoneDays: diffDays,
+              error: sendRes.error || null,
             });
 
             if (sendRes.success) {

@@ -95,6 +95,7 @@ export async function GET(req: NextRequest) {
           cf["IN CHARGE 2 CONTACT"] ||
           null,
         googleMapsUrl: cf.googleMapsUrl || null,
+        communicationLogs: Array.isArray(cf.communicationLogs) ? cf.communicationLogs : [],
       };
     });
 

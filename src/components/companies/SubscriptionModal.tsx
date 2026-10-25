@@ -180,7 +180,7 @@ export function SubscriptionModal({ companyId, companyName, initial, onClose, on
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Subscription Fee (৳)
+                Subscription Fee (BDT)
               </label>
               <input
                 type="number"

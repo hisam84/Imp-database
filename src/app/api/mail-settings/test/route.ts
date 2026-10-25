@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { sendEmail } from "@/lib/mailer";
+import {
+  sendEmail,
+  buildOptimizedEmailHtml,
+  buildOptimizedEmailText,
+  getAppBaseUrl,
+  getDisplayHost,
+} from "@/lib/mailer";
 import { formatDhakaDateTime } from "@/lib/dateUtils";
 import {
   getSmtpConfig,
@@ -46,35 +52,42 @@ export async function POST(request: Request) {
         }
       : currentSmtp;
 
-    const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><title>SMTP Mailer Connectivity Test</title></head>
-<body style="margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; color: #0f172a;">
-  <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <div style="background: linear-gradient(135deg, #0D47A1, #2196F3); padding: 20px 24px; color: #ffffff;">
-      <h2 style="margin: 0; font-size: 18px; font-weight: 700;">✅ SMTP Mailer Test Success</h2>
-      <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">Client Registry Management System</p>
-    </div>
-    <div style="padding: 24px;">
-      <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 16px 0;">
-        This test email confirms that your outgoing mail server configuration is fully operational.
-      </p>
-      <div style="background-color: #f1f5f9; border-left: 4px solid #2196F3; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #1e293b; margin-bottom: 20px;">
-        <div><strong>Status:</strong> Connected & Dispatched</div>
-        <div><strong>SMTP Host:</strong> ${effectiveSmtp.isEnabled && effectiveSmtp.host ? effectiveSmtp.host : "Brevo Relay (smtp-relay.brevo.com)"}</div>
-        <div><strong>Port:</strong> ${effectiveSmtp.isEnabled && effectiveSmtp.port ? effectiveSmtp.port : 587}</div>
-        <div><strong>Sender:</strong> ${effectiveSmtp.fromEmail || effectiveSmtp.user || "imperialitbd2011@gmail.com"}</div>
-        <div><strong>Timestamp:</strong> ${formatDhakaDateTime(new Date())} (BST / Dhaka)</div>
-      </div>
-      <p style="font-size: 12px; color: #64748b; margin: 0;">
-        Your email server is configured to deliver task assignment notifications, 2-hour reminders, monthly recurring notices, and password reset OTPs.
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-    `.trim();
+    const appBaseUrl = await getAppBaseUrl();
+    const displayHost = getDisplayHost(appBaseUrl);
+
+    const testOptions = {
+      title: "SMTP Mailer Connectivity Test",
+      preheader: "Outgoing mail server connection verified successfully.",
+      badgeLabel: "SMTP Verified",
+      badgeVariant: "emerald" as const,
+      heading: "SMTP Mail Server Test Success",
+      recipientName: "System Administrator",
+      leadHtml: "This automated test email confirms that your outgoing mail server configuration is fully operational and deliverability-optimized.",
+      leadTextPlain: "This test email confirms that your outgoing mail server configuration is fully operational.",
+      callout: {
+        title: "Connection Status: Verified",
+        text: `Successfully connected and dispatched via ${effectiveSmtp.isEnabled && effectiveSmtp.host ? effectiveSmtp.host : "Brevo SMTP Relay"}.`,
+        variant: "emerald" as const,
+      },
+      keyValues: [
+        { label: "Delivery Status", value: "Connected & Verified", isBadge: true, badgeVariant: "emerald" as const },
+        { label: "SMTP Host", value: effectiveSmtp.isEnabled && effectiveSmtp.host ? effectiveSmtp.host : "Brevo Relay (smtp-relay.brevo.com)" },
+        { label: "Port", value: String(effectiveSmtp.isEnabled && effectiveSmtp.port ? effectiveSmtp.port : 587) },
+        { label: "Sender", value: effectiveSmtp.fromEmail || effectiveSmtp.user || "imperialitbd2011@gmail.com" },
+        { label: "Timestamp", value: `${formatDhakaDateTime(new Date())} (BST / Dhaka)` },
+      ],
+      noteHtml: "Your mail server is configured to deliver task assignments, 2-hour deadline reminders, monthly recurring notices, expiry alerts, and password reset OTPs.",
+      noteTextPlain: "Your mail server is configured to deliver task assignments, 2-hour deadline reminders, monthly recurring notices, expiry alerts, and password reset OTPs.",
+      cta: {
+        label: "Open Mail Settings",
+        url: `${appBaseUrl}/mail-settings`,
+      },
+      appBaseUrl,
+      displayHost,
+    };
+
+    const html = buildOptimizedEmailHtml(testOptions);
+    const text = buildOptimizedEmailText(testOptions);
 
     // If explicit form SMTP is provided with host and user, test directly through it
     if (effectiveSmtp.host && effectiveSmtp.user && effectiveSmtp.pass) {
@@ -82,14 +95,27 @@ export async function POST(request: Request) {
         const transporter = createSmtpTransporter(effectiveSmtp);
         const fromName = effectiveSmtp.fromName || "Imperial IT";
         const fromEmail = effectiveSmtp.fromEmail || effectiveSmtp.user;
+        const domain = fromEmail.includes("@") ? fromEmail.split("@")[1] : "imperialitbd.com";
+        const uniqueId = `${Date.now()}.${Math.random().toString(36).substring(2, 10)}`;
+        const messageId = `<${uniqueId}@${domain}>`;
 
         await transporter.sendMail({
           from: `"${fromName}" <${fromEmail}>`,
           replyTo: effectiveSmtp.replyTo || fromEmail,
           to: recipient,
-          subject: `Test Email from Client Registry (${effectiveSmtp.host})`,
-          text: `Test email successfully sent from ${effectiveSmtp.host} to ${recipient}.`,
+          subject: `Test Email: Outbound SMTP Verified (${effectiveSmtp.host})`,
+          text,
           html,
+          headers: {
+            "Message-ID": messageId,
+            "Date": new Date().toUTCString(),
+            "MIME-Version": "1.0",
+            "X-Mailer": "Imperial-IT-Mailer/2.0",
+            "Auto-Submitted": "auto-generated",
+            "X-Auto-Response-Suppress": "All, OOF, AutoReply",
+            "Precedence": "bulk",
+            "List-Unsubscribe": `<mailto:${fromEmail}?subject=unsubscribe>`,
+          },
         });
 
         return NextResponse.json({
@@ -111,9 +137,9 @@ export async function POST(request: Request) {
     // Otherwise, dispatch using standard system sender (which checks DB SMTP and then Brevo)
     const result = await sendEmail({
       to: recipient,
-      subject: "Test Email from Client Registry",
+      subject: "Test Email: Outbound Mailer Verified",
       html,
-      text: "Test email successfully received from Client Registry.",
+      text,
     });
 
     if (!result.success) {

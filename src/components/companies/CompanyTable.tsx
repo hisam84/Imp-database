@@ -165,7 +165,7 @@ export function CompanyTable({
                               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
                                 <span>Cycle: <b>{sub.billingCycle}</b></span>
                                 {sub.price !== undefined && sub.price !== null && (
-                                  <span>Price: <b className="text-slate-900 dark:text-slate-100 font-mono">৳{sub.price.toLocaleString()}</b></span>
+                                  <span>Price: <b className="text-slate-900 dark:text-slate-100 font-mono">BDT {sub.price.toLocaleString()}</b></span>
                                 )}
                               </div>
 

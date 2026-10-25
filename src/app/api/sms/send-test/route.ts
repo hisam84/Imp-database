@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const testMessage =
       message && message.trim()
         ? message.trim()
-        : `[Imperial IT] এটি একটি টেস্ট এসএমএস। QSMS গেটওয়ে সফলভাবে কনফিগার করা হয়েছে। তারিখ: ${new Date().toLocaleDateString("en-GB")}`;
+        : `[Imperial IT] This is a test SMS. QSMS gateway is configured successfully. Date: ${new Date().toLocaleDateString("en-GB")}`;
 
     const res = await sendQsmsSms({
       to: normalized,

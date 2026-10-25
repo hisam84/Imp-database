@@ -123,7 +123,7 @@ export function CompanyFormModal({ initial, onClose, onSaved }: CompanyFormModal
               </label>
               <input
                 type="text"
-                placeholder="e.g. একমি টেক সলিউশনস লিঃ"
+                placeholder="e.g. Acme Tech Solutions Ltd (Bengali)"
                 value={companyNameBangla}
                 onChange={(e) => setCompanyNameBangla(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"

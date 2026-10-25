@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       cf["IN CHARGE 2 CONTACT"] ||
       null,
     googleMapsUrl: cf.googleMapsUrl || null,
+    communicationLogs: Array.isArray(cf.communicationLogs) ? cf.communicationLogs : [],
   });
 }
 

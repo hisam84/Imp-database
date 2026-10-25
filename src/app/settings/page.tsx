@@ -214,7 +214,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      Automated Expiry Alerts (মেয়াদ শেষ হওয়ার অটো ইমেইল)
+                      Automated Expiry Alerts
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Enable or disable automated email dispatches when websites or software subscriptions near expiry.
@@ -248,7 +248,7 @@ export default function SettingsPage() {
                   </span>
                   <div>
                     <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                      Institution Website Expiry Settings (ওয়েবসাইট মেয়াদ সেটিংস)
+                      Institution Website Expiry Settings
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       Select how many days before website expiration the automated email will be sent
@@ -275,10 +275,10 @@ export default function SettingsPage() {
                 <div className="p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
                   <p className="font-bold flex items-center gap-1.5">
                     <span>📌</span>
-                    <span>গুরুত্বপূর্ণ নিয়ম (Business Rule):</span>
+                    <span>Important Rule:</span>
                   </p>
                   <p className="leading-relaxed">
-                    ওয়েবসাইটের ক্ষেত্রে <strong>Actual Expiry</strong> কাউন্ট হবে না; সরাসরি মূল <strong>Expire Date</strong> (নির্ধারিত মেয়াদ) অনুযায়ী ইমেইল পাঠানোর দিন গণনা করা হবে।
+                    For institutions, <strong>Actual Expiry</strong> is not used for calculations; alert timing is strictly determined by the scheduled <strong>Expire Date</strong>.
                   </p>
                 </div>
 
@@ -292,7 +292,7 @@ export default function SettingsPage() {
                       <span className="text-[11px] font-mono text-slate-400">Primary Rule</span>
                     </div>
                     <label className="block text-xs font-bold text-slate-900 dark:text-slate-100">
-                      Send email how many days before expiry? (মেয়াদ শেষ হওয়ার কত দিন আগে ইমেইল যাবে)
+                      Send email how many days before expiry?
                     </label>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       Recommended: 30 days before scheduled Expire Date
@@ -307,7 +307,7 @@ export default function SettingsPage() {
                         onChange={(e) => setWebsiteDays(Math.max(1, parseInt(e.target.value) || 1))}
                         className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
                       />
-                      <span className="text-xs font-bold text-slate-500 shrink-0">দিন আগে (days)</span>
+                      <span className="text-xs font-bold text-slate-500 shrink-0">days before</span>
                     </div>
                   </div>
 
@@ -335,7 +335,7 @@ export default function SettingsPage() {
                         onChange={(e) => setSoftwareDays(Math.max(1, parseInt(e.target.value) || 1))}
                         className="w-full px-3 py-2 text-center font-bold font-mono text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
                       />
-                      <span className="text-xs font-bold text-slate-500 shrink-0">দিন আগে (days)</span>
+                      <span className="text-xs font-bold text-slate-500 shrink-0">days before</span>
                     </div>
                   </div>
                 </div>
@@ -351,7 +351,7 @@ export default function SettingsPage() {
                   </span>
                   <div>
                     <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                      Company Software Subscription Expiry Settings (কোম্পানি সাবস্ক্রিপশন)
+                      Company Software Subscription Expiry Settings
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       Select days before expiry according to billing cycles (Monthly, Half-Yearly, Yearly)
@@ -381,7 +381,7 @@ export default function SettingsPage() {
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400">
                         Monthly
                       </span>
-                      <span className="text-[11px] font-mono text-slate-400">মাসিক সাইকেল</span>
+                      <span className="text-[11px] font-mono text-slate-400">Monthly Cycle</span>
                     </div>
                     <label className="block text-xs font-bold text-slate-900 dark:text-slate-100">
                       Days before expiry
@@ -407,7 +407,7 @@ export default function SettingsPage() {
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400">
                         Half-Yearly
                       </span>
-                      <span className="text-[11px] font-mono text-slate-400">অর্ধবার্ষিক</span>
+                      <span className="text-[11px] font-mono text-slate-400">Half-Yearly Cycle</span>
                     </div>
                     <label className="block text-xs font-bold text-slate-900 dark:text-slate-100">
                       Days before expiry
@@ -433,7 +433,7 @@ export default function SettingsPage() {
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                         Yearly
                       </span>
-                      <span className="text-[11px] font-mono text-slate-400">বাৎসরিক সাইকেল</span>
+                      <span className="text-[11px] font-mono text-slate-400">Yearly Cycle</span>
                     </div>
                     <label className="block text-xs font-bold text-slate-900 dark:text-slate-100">
                       Days before expiry
@@ -488,7 +488,7 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Administrator Alert Email (অ্যাডমিন নোটিফিকেশন ইমেইল)
+                    Administrator Alert Email
                   </label>
                   <input
                     type="email"
@@ -542,7 +542,7 @@ export default function SettingsPage() {
                     <span>Saving Settings...</span>
                   </>
                 ) : (
-                  <span>Save Expiry Settings (সংরক্ষণ করুন)</span>
+                  <span>Save Expiry Settings</span>
                 )}
               </button>
             </div>
@@ -554,7 +554,7 @@ export default function SettingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Real-Time Expiry Alert Dispatcher (লাইভ স্ক্যানার)</span>
+                <span>Real-Time Expiry Alert Dispatcher</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   On-Demand Cron
                 </span>

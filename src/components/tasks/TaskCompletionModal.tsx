@@ -32,7 +32,7 @@ export function TaskCompletionModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isLocked) {
-      setError(`মান্থলি টাস্কের নির্ধারিত তারিখ (${formatDhakaDate(task.dueDate)}) আসার পূর্বে এটি সম্পন্ন করা যাবে না।`);
+      setError(`A monthly recurring task cannot be marked as complete before its scheduled date (${formatDhakaDate(task.dueDate)}).`);
       return;
     }
 

@@ -139,8 +139,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         if (dueStart.getTime() > nowStart.getTime()) {
           return NextResponse.json(
             {
-              error: "মান্থলি টাস্কের নির্ধারিত তারিখ আসার পূর্বে এটি সম্পন্ন (Complete) করা যাবে না।",
-              errorEnglish: "Monthly recurring tasks can only be completed on or after their scheduled due date."
+              error: "Monthly recurring tasks can only be completed on or after their scheduled due date.",
             },
             { status: 400 }
           );

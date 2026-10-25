@@ -36,7 +36,7 @@ export function TargetedBulkUpload({
       targetedTemplateHeaders,
       [
         "Dhaka Ideal Academy",
-        "ঢাকা আইডিয়াল একাডেমি",
+        "Dhaka Ideal Academy (Bengali Name)",
         "High",
         "Mr. Headmaster",
         "01711000000",

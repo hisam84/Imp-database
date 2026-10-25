@@ -164,7 +164,7 @@ export function PwaInstallPrompt() {
               </button>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
-              মোবাইলে দ্রুত ও সহজে ব্যবহার করতে অ্যাপটি হোম স্ক্রিনে ইন্সটল করুন।
+              Install the app on your home screen for quick and easy mobile access.
             </p>
 
             {/* iOS Instructions helper */}
@@ -174,12 +174,12 @@ export function PwaInstallPrompt() {
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
-                  আইফোনে ইন্সটল করার নিয়ম:
+                  How to install on iOS:
                 </p>
                 <ol className="list-decimal list-inside space-y-0.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
-                  <li>সাফারি ব্রাউজারের নিচে <strong>Share বাটনে</strong> ট্যাপ করুন</li>
-                  <li>নিচে স্ক্রল করে <strong>&apos;Add to Home Screen&apos;</strong> চাপুন</li>
-                  <li>উপরে ডানপাশে <strong>&apos;Add&apos;</strong> এ ক্লিক করুন</li>
+                  <li>Tap the <strong>Share button</strong> at the bottom of Safari</li>
+                  <li>Scroll down and tap <strong>&apos;Add to Home Screen&apos;</strong></li>
+                  <li>Tap <strong>&apos;Add&apos;</strong> in the top right corner</li>
                 </ol>
               </div>
             )}
@@ -194,14 +194,14 @@ export function PwaInstallPrompt() {
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                {isIos ? (showIosInstructions ? "নির্দেশনা লুকান" : "ইন্সটল করার নিয়ম") : "ইন্সটল করুন"}
+                {isIos ? (showIosInstructions ? "Hide Guide" : "Install Guide") : "Install App"}
               </button>
               <button
                 type="button"
                 onClick={handleDismiss}
                 className="px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
               >
-                পরে
+                Later
               </button>
             </div>
           </div>

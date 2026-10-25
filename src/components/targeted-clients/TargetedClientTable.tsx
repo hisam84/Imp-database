@@ -634,7 +634,7 @@ export function TargetedClientTable({
                   </tr>
 
                   {/* ================================================================= */}
-                  {/* EXPANDABLE INFORMATION DROPDOWN (তথ্য ড্রপডাউন)                     */}
+                  {/* EXPANDABLE INFORMATION DROPDOWN                                     */}
                   {/* ================================================================= */}
                   {isOpen && (
                     <tr className="border-b border-slate-200 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-950/60 animate-in fade-in duration-100">

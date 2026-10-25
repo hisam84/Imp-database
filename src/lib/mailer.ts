@@ -91,6 +91,34 @@ export interface TaskCompletionEmailData {
   recipientName: string;
 }
 
+export interface WebsiteExpiryAlertEmailData {
+  institutionName: string;
+  institutionNameBangla?: string | null;
+  domain?: string | null;
+  category?: string | null;
+  expireDate: Date | string;
+  daysRemaining: number;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  recipientEmail: string;
+  recipientName?: string;
+  adminEmailCopy?: string | null;
+}
+
+export interface CompanySubscriptionExpiryAlertEmailData {
+  companyName: string;
+  companyNameBangla?: string | null;
+  softwareName: string;
+  billingCycle: string;
+  expireDate: Date | string;
+  daysRemaining: number;
+  contactPerson?: string | null;
+  contactPhone?: string | null;
+  recipientEmail: string;
+  recipientName?: string;
+  adminEmailCopy?: string | null;
+}
+
 export interface EmailPayload {
   to: string;
   toName?: string;
@@ -100,6 +128,7 @@ export interface EmailPayload {
   text?: string;
   fromEmail?: string;
   fromName?: string;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -136,143 +165,6 @@ export function parseBrevoKey(rawKey?: string): string | undefined {
     }
   }
   return trimmed;
-}
-
-/**
- * Dedicated Brevo email sender supporting Brevo SMTP relay (primary) and Brevo REST API (secondary).
- */
-export async function sendEmail(payload: EmailPayload): Promise<{ success: boolean; error?: string }> {
-  const { to, toName, cc, subject, html, text, fromName } = payload;
-
-  if (!to) {
-    const msg = "Mailer warning: No recipient email provided. Skipping email.";
-    console.warn(msg);
-    return { success: false, error: msg };
-  }
-
-  // 0. Check Super Admin custom SMTP configuration first
-  try {
-    const customSmtp = await getSmtpConfig();
-    if (customSmtp.isEnabled && customSmtp.host && customSmtp.user && customSmtp.pass) {
-      const customSenderName = fromName || customSmtp.fromName || "Imperial IT";
-      const customSenderEmail = customSmtp.fromEmail || customSmtp.user;
-      const customReplyTo = customSmtp.replyTo || customSenderEmail;
-
-      try {
-        const customTransporter = createSmtpTransporter(customSmtp);
-        await customTransporter.sendMail({
-          from: `"${customSenderName}" <${customSenderEmail}>`,
-          replyTo: customReplyTo,
-          to: toName ? `"${toName}" <${to}>` : to,
-          ...(cc && cc.length > 0 ? { cc } : {}),
-          subject,
-          text,
-          html,
-        });
-
-        return { success: true };
-      } catch (customErr: any) {
-        console.warn("Custom SMTP delivery failed:", customErr?.message || customErr);
-        if (!customSmtp.useBrevoFallback) {
-          return {
-            success: false,
-            error: `Custom SMTP error: ${customErr?.message || "Failed to deliver via configured SMTP"}`,
-          };
-        }
-        console.log("Custom SMTP failed with fallback enabled; attempting Brevo delivery relay/API...");
-      }
-    }
-  } catch (confErr: any) {
-    console.warn("Error reading custom SMTP configuration:", confErr?.message || confErr);
-  }
-
-  const rawBrevoApiKey = process.env.BREVO_API_KEY || DEFAULT_BREVO_CONFIG.apiKey;
-  const brevoApiKey = parseBrevoKey(rawBrevoApiKey);
-  
-  // Sender email is strictly imperialitbd2011@gmail.com
-  const senderEmail = "imperialitbd2011@gmail.com";
-  const senderName = fromName || process.env.BREVO_SENDER_NAME || DEFAULT_BREVO_CONFIG.senderName;
-  
-  // Brevo SMTP Relay Username: Always enforce b866f6001@smtp-brevo.com for relay authentication
-  const envSmtpUser = process.env.BREVO_SMTP_USER;
-  const brevoSmtpUser =
-    (envSmtpUser && envSmtpUser.includes("@smtp-brevo.com"))
-      ? envSmtpUser
-      : DEFAULT_BREVO_CONFIG.smtpUser;
-
-  const brevoSmtpPass = parseBrevoKey(process.env.BREVO_SMTP_KEY) || DEFAULT_BREVO_CONFIG.smtpKey;
-  const brevoSmtpServer = process.env.BREVO_SMTP_SERVER || DEFAULT_BREVO_CONFIG.smtpServer;
-  const brevoSmtpPort = Number(process.env.BREVO_SMTP_PORT) || DEFAULT_BREVO_CONFIG.smtpPort;
-
-  // 1. Try Brevo SMTP via Nodemailer relay (verified and bypasses cloud IP whitelisting)
-  if (brevoSmtpUser && brevoSmtpPass) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: brevoSmtpServer,
-        port: brevoSmtpPort,
-        secure: false, // Port 587 uses STARTTLS
-        auth: {
-          user: brevoSmtpUser,
-          pass: brevoSmtpPass,
-        },
-      });
-
-      await transporter.sendMail({
-        from: `"${senderName}" <${senderEmail}>`,
-        replyTo: senderEmail,
-        to: toName ? `"${toName}" <${to}>` : to,
-        ...(cc && cc.length > 0 ? { cc } : {}),
-        subject,
-        text,
-        html,
-      });
-
-      return { success: true };
-    } catch (smtpErr: any) {
-      console.warn("Brevo SMTP relay send failed (will attempt REST API):", smtpErr?.message || smtpErr);
-    }
-  }
-
-  // 2. Try Brevo REST API as fallback
-  if (brevoApiKey && senderEmail) {
-    try {
-      const toList = [{ email: to, ...(toName ? { name: toName } : {}) }];
-      const ccList = Array.isArray(cc) ? cc.filter(Boolean).map((e) => ({ email: e })) : undefined;
-
-      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "api-key": brevoApiKey,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          sender: {
-            name: senderName,
-            email: senderEmail,
-          },
-          to: toList,
-          ...(ccList && ccList.length > 0 ? { cc: ccList } : {}),
-          subject,
-          htmlContent: html,
-          ...(text ? { textContent: text } : {}),
-        }),
-      });
-
-      if (response.ok) {
-        return { success: true };
-      }
-
-      const errorData = await response.json().catch(() => ({}));
-      console.warn("Brevo REST API error:", errorData);
-    } catch (apiErr) {
-      console.warn("Brevo REST API request failed:", apiErr);
-    }
-  }
-
-  const noConfigMsg = "Mailer warning: Brevo credentials could not dispatch email.";
-  console.warn(noConfigMsg);
-  return { success: false, error: noConfigMsg };
 }
 
 /**
@@ -319,8 +211,588 @@ export const SITE_URL = defaultBaseUrl.endsWith("/database") ? defaultBaseUrl : 
 export const loginUrl = `${SITE_URL}/login`;
 export const tasksUrl = `${SITE_URL}/tasks`;
 
+// =============================================================================
+// Anti-Spam & Deliverability Engine
+// =============================================================================
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export interface EmailKeyValue {
+  label: string;
+  value: string;
+  isMono?: boolean;
+  isLink?: boolean;
+  linkUrl?: string;
+  isBadge?: boolean;
+  badgeVariant?: "blue" | "amber" | "rose" | "emerald";
+}
+
+export interface RenderEmailOptions {
+  title: string;
+  preheader: string;
+  badgeLabel: string;
+  badgeVariant?: "blue" | "amber" | "rose" | "emerald";
+  heading: string;
+  recipientName?: string;
+  leadHtml: string;
+  leadTextPlain: string;
+  callout?: {
+    title?: string;
+    text: string;
+    subtext?: string;
+    code?: string;
+    variant?: "blue" | "amber" | "rose" | "emerald";
+  };
+  keyValues?: EmailKeyValue[];
+  noteHtml?: string;
+  noteTextPlain?: string;
+  cta?: {
+    label: string;
+    url: string;
+  };
+  appBaseUrl: string;
+  displayHost: string;
+}
+
+const COLOR_VARIANTS = {
+  blue: {
+    badgeBg: "#EFF6FF",
+    badgeText: "#1D4ED8",
+    badgeBorder: "#BFDBFE",
+    calloutBg: "#F0F7FF",
+    calloutBorder: "#2563EB",
+    calloutText: "#1E3A8A",
+  },
+  amber: {
+    badgeBg: "#FFFBEB",
+    badgeText: "#B45309",
+    badgeBorder: "#FDE68A",
+    calloutBg: "#FFFDF5",
+    calloutBorder: "#D97706",
+    calloutText: "#78350F",
+  },
+  rose: {
+    badgeBg: "#FEF2F2",
+    badgeText: "#B91C1C",
+    badgeBorder: "#FECACA",
+    calloutBg: "#FFF5F5",
+    calloutBorder: "#DC2626",
+    calloutText: "#7F1D1D",
+  },
+  emerald: {
+    badgeBg: "#ECFDF5",
+    badgeText: "#047857",
+    badgeBorder: "#A7F3D0",
+    calloutBg: "#F0FDF4",
+    calloutBorder: "#059669",
+    calloutText: "#064E3B",
+  },
+};
+
 /**
- * 1. Password Reset OTP Email (English Only, Responsive Blue Styling)
+ * Builds an RFC-compliant, responsive, anti-spam optimized HTML email body.
+ */
+export function buildOptimizedEmailHtml(options: RenderEmailOptions): string {
+  const {
+    title,
+    preheader,
+    badgeLabel,
+    badgeVariant = "blue",
+    heading,
+    recipientName = "Team Member",
+    leadHtml,
+    callout,
+    keyValues = [],
+    noteHtml,
+    cta,
+    appBaseUrl,
+    displayHost,
+  } = options;
+
+  const currentYear = new Date().getFullYear();
+  const colors = COLOR_VARIANTS[badgeVariant] || COLOR_VARIANTS.blue;
+  const calloutColors = callout?.variant ? COLOR_VARIANTS[callout.variant] : colors;
+
+  // Key-value rows HTML
+  const rowsHtml = keyValues
+    .map((kv) => {
+      let valHtml = escapeHtml(kv.value);
+      if (kv.isLink && kv.linkUrl) {
+        valHtml = `<a href="${escapeHtml(kv.linkUrl)}" target="_blank" rel="noopener noreferrer" style="color: #2563EB; text-decoration: underline; font-weight: 600;">${valHtml}</a>`;
+      } else if (kv.isMono) {
+        valHtml = `<span style="font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 13px; color: #0F172A; font-weight: 600;">${valHtml}</span>`;
+      } else if (kv.isBadge) {
+        const bColors = kv.badgeVariant ? COLOR_VARIANTS[kv.badgeVariant] : colors;
+        valHtml = `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background-color: ${bColors.badgeBg}; color: ${bColors.badgeText}; border: 1px solid ${bColors.badgeBorder};">${valHtml}</span>`;
+      } else {
+        valHtml = `<span style="color: #0F172A; font-weight: 600;">${valHtml}</span>`;
+      }
+
+      return `
+        <tr>
+          <td class="stack-column" style="padding: 9px 12px; font-size: 13px; font-weight: 600; color: #64748B; width: 140px; border-bottom: 1px solid #F1F5F9; vertical-align: top;">
+            ${escapeHtml(kv.label)}
+          </td>
+          <td class="stack-column" style="padding: 9px 12px; font-size: 13px; color: #0F172A; border-bottom: 1px solid #F1F5F9; vertical-align: top;">
+            ${valHtml}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
+  <title>${escapeHtml(title)}</title>
+  <style type="text/css">
+    body, table, td, p, a, li, blockquote {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table, td {
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    img {
+      -ms-interpolation-mode: bicubic;
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+    }
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      background-color: #F8FAFC;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #0F172A;
+    }
+    @media only screen and (max-width: 620px) {
+      .email-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .stack-column {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .mobile-padding {
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+      }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; color: #0F172A;">
+  <!-- Anti-spam Preheader with Zero-Width Spacing to Prevent Snippet Bleed -->
+  <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #F8FAFC; opacity: 0;">
+    ${escapeHtml(preheader)}
+    &#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;
+    &#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;
+    &#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;
+    &#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;&#847; &zwnj;&nbsp;&#8199;&shy;
+  </div>
+
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC;">
+    <tr>
+      <td align="center" style="padding: 24px 12px 36px 12px;">
+        <!-- Card Container -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 580px; background-color: #FFFFFF; border-radius: 12px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.05);">
+          
+          <!-- Header Bar -->
+          <tr>
+            <td style="background-color: #0F172A; padding: 20px 24px;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="left" valign="middle">
+                    <span style="font-size: 16px; font-weight: 800; color: #FFFFFF; letter-spacing: -0.2px;">Imperial IT</span>
+                    <span style="display: block; font-size: 11px; color: #94A3B8; font-weight: 500; margin-top: 2px;">Client Registry Management System</span>
+                  </td>
+                  <td align="right" valign="middle">
+                    <span style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background-color: ${colors.badgeBg}; color: ${colors.badgeText}; border: 1px solid ${colors.badgeBorder};">
+                      ${escapeHtml(badgeLabel)}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td class="mobile-padding" style="padding: 28px 24px 24px 24px;">
+              
+              <!-- Title -->
+              <h1 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; line-height: 1.35; color: #0F172A;">
+                ${escapeHtml(heading)}
+              </h1>
+
+              <!-- Greeting & Lead -->
+              <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #334155;">
+                Hello ${escapeHtml(recipientName)},
+              </p>
+              <div style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+                ${leadHtml}
+              </div>
+
+              ${
+                callout
+                  ? `
+              <!-- Callout Box -->
+              <div style="background-color: ${calloutColors.calloutBg}; border-left: 4px solid ${calloutColors.calloutBorder}; border-radius: 6px; padding: 14px 16px; margin: 0 0 20px 0;">
+                ${
+                  callout.title
+                    ? `<p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: ${calloutColors.calloutText};">${escapeHtml(callout.title)}</p>`
+                    : ""
+                }
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: ${calloutColors.calloutText};">
+                  ${escapeHtml(callout.text)}
+                </p>
+                ${
+                  callout.code
+                    ? `
+                <div style="margin: 14px 0 6px 0; text-align: center;">
+                  <span style="display: inline-block; font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: ${calloutColors.calloutBorder}; background-color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: 2px dashed ${calloutColors.calloutBorder};">
+                    ${escapeHtml(callout.code)}
+                  </span>
+                </div>
+                `
+                    : ""
+                }
+                ${
+                  callout.subtext
+                    ? `<p style="margin: 6px 0 0 0; font-size: 11px; color: #64748B;">${escapeHtml(callout.subtext)}</p>`
+                    : ""
+                }
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                keyValues.length > 0
+                  ? `
+              <!-- Structured Details Table -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #FAFCFE; border: 1px solid #E2E8F0; border-radius: 8px; margin: 0 0 22px 0; overflow: hidden;">
+                ${rowsHtml}
+              </table>
+              `
+                  : ""
+              }
+
+              ${
+                noteHtml
+                  ? `
+              <!-- Note / Instructions -->
+              <div style="margin: 0 0 22px 0; font-size: 13px; line-height: 1.55; color: #475569; background-color: #F8FAFC; padding: 12px 14px; border-radius: 6px; border: 1px solid #F1F5F9;">
+                ${noteHtml}
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                cta
+                  ? `
+              <!-- Call to Action Button with Direct Link Fallback -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0 12px 0;">
+                <tr>
+                  <td align="center" style="border-radius: 8px; background-color: #2563EB;">
+                    <a href="${escapeHtml(cta.url)}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; color: #FFFFFF; text-decoration: none; border-radius: 8px; border: 1px solid #2563EB;">
+                      ${escapeHtml(cta.label)} &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 8px 0 0 0; font-size: 11px; color: #64748B; line-height: 1.45; word-break: break-all;">
+                If the button above does not open, visit this link directly in your browser:<br />
+                <a href="${escapeHtml(cta.url)}" target="_blank" rel="noopener noreferrer" style="color: #2563EB; text-decoration: underline;">${escapeHtml(cta.url)}</a>
+              </p>
+              `
+                  : ""
+              }
+
+            </td>
+          </tr>
+
+          <!-- Anti-Spam Compliance & Identification Footer -->
+          <tr>
+            <td class="mobile-padding" style="padding: 20px 24px; background-color: #F8FAFC; border-top: 1px solid #E2E8F0;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="font-size: 11px; line-height: 1.6; color: #64748B; text-align: left;">
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #334155;">
+                      Imperial IT BD &middot; Operational Notification Service
+                    </p>
+                    <p style="margin: 0 0 4px 0;">
+                      This is an automated operational notice generated by the Imperial IT Client Registry Management System (<a href="${escapeHtml(appBaseUrl)}" target="_blank" rel="noopener noreferrer" style="color: #2563EB; text-decoration: underline;">${escapeHtml(displayHost)}</a>).
+                    </p>
+                    <p style="margin: 0 0 4px 0;">
+                      You received this email because your email address is listed as an authorized recipient for tasks or organization accounts.
+                    </p>
+                    <p style="margin: 0; color: #94A3B8; font-size: 10px;">
+                      Imperial IT BD &middot; Dhaka, Bangladesh &middot; &copy; ${currentYear} All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+/**
+ * Builds matching plain text for high text-to-HTML score and SpamAssassin compliance.
+ */
+export function buildOptimizedEmailText(options: RenderEmailOptions): string {
+  const {
+    heading,
+    recipientName = "Team Member",
+    leadTextPlain,
+    callout,
+    keyValues = [],
+    noteTextPlain,
+    cta,
+    appBaseUrl,
+    displayHost,
+  } = options;
+
+  let text = `${heading.toUpperCase()}\n`;
+  text += `${"=".repeat(heading.length)}\n\n`;
+  text += `Hello ${recipientName},\n\n`;
+  text += `${leadTextPlain}\n\n`;
+
+  if (callout) {
+    if (callout.title) text += `[${callout.title}]\n`;
+    text += `${callout.text}\n`;
+    if (callout.code) text += `Verification Code: ${callout.code}\n`;
+    if (callout.subtext) text += `(${callout.subtext})\n`;
+    text += `\n`;
+  }
+
+  if (keyValues.length > 0) {
+    text += `DETAILS:\n`;
+    for (const kv of keyValues) {
+      text += `- ${kv.label}: ${kv.value}\n`;
+    }
+    text += `\n`;
+  }
+
+  if (noteTextPlain) {
+    text += `NOTE:\n${noteTextPlain}\n\n`;
+  }
+
+  if (cta) {
+    text += `${cta.label}:\n${cta.url}\n\n`;
+  }
+
+  text += `----------------------------------------\n`;
+  text += `Imperial IT BD - Operational Notification Service\n`;
+  text += `System: ${displayHost} (${appBaseUrl})\n`;
+  text += `Dhaka, Bangladesh\n`;
+
+  return text.trim();
+}
+
+/**
+ * Generates RFC-compliant anti-spam headers for outbound messages.
+ */
+function createAntiSpamHeaders(senderEmail: string, recipientEmail: string, customHeaders?: Record<string, string>) {
+  const domain = senderEmail.includes("@") ? senderEmail.split("@")[1] : "imperialitbd.com";
+  const uniqueId = `${Date.now()}.${Math.random().toString(36).substring(2, 10)}`;
+  const messageId = `<${uniqueId}@${domain}>`;
+
+  return {
+    "Message-ID": messageId,
+    "Date": new Date().toUTCString(),
+    "MIME-Version": "1.0",
+    "X-Mailer": "Imperial-IT-Mailer/2.0",
+    "Auto-Submitted": "auto-generated",
+    "X-Auto-Response-Suppress": "All, OOF, AutoReply",
+    "Precedence": "bulk",
+    "X-Entity-Ref-ID": uniqueId,
+    "List-Unsubscribe": `<mailto:${senderEmail}?subject=unsubscribe>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    "X-Report-Abuse-To": `<mailto:${senderEmail}>`,
+    ...(customHeaders || {}),
+  };
+}
+
+/**
+ * Unified email sender with anti-spam deliverability headers supporting:
+ * 1. Super Admin Custom SMTP (Gmail, cPanel, Outlook, Custom)
+ * 2. Brevo SMTP Relay
+ * 3. Brevo REST API Fallback
+ */
+export async function sendEmail(payload: EmailPayload): Promise<{ success: boolean; error?: string }> {
+  const { to, toName, cc, subject, html, text, fromName, headers } = payload;
+
+  if (!to) {
+    const msg = "Mailer warning: No recipient email provided. Skipping email.";
+    console.warn(msg);
+    return { success: false, error: msg };
+  }
+
+  // 0. Check Super Admin custom SMTP configuration first
+  try {
+    const customSmtp = await getSmtpConfig();
+    if (customSmtp.isEnabled && customSmtp.host && customSmtp.user && customSmtp.pass) {
+      const customSenderName = fromName || customSmtp.fromName || "Imperial IT";
+      const customSenderEmail = customSmtp.fromEmail || customSmtp.user;
+      const customReplyTo = customSmtp.replyTo || customSenderEmail;
+      const outboundHeaders = createAntiSpamHeaders(customSenderEmail, to, headers);
+
+      try {
+        const customTransporter = createSmtpTransporter(customSmtp);
+        await customTransporter.sendMail({
+          from: `"${customSenderName}" <${customSenderEmail}>`,
+          replyTo: customReplyTo,
+          to: toName ? `"${toName}" <${to}>` : to,
+          ...(cc && cc.length > 0 ? { cc } : {}),
+          subject,
+          text,
+          html,
+          headers: outboundHeaders,
+        });
+
+        return { success: true };
+      } catch (customErr: any) {
+        console.warn("Custom SMTP delivery failed:", customErr?.message || customErr);
+        if (!customSmtp.useBrevoFallback) {
+          return {
+            success: false,
+            error: `Custom SMTP error: ${customErr?.message || "Failed to deliver via configured SMTP"}`,
+          };
+        }
+        console.log("Custom SMTP failed with fallback enabled; attempting Brevo delivery relay/API...");
+      }
+    }
+  } catch (confErr: any) {
+    console.warn("Error reading custom SMTP configuration:", confErr?.message || confErr);
+  }
+
+  const rawBrevoApiKey = process.env.BREVO_API_KEY || DEFAULT_BREVO_CONFIG.apiKey;
+  const brevoApiKey = parseBrevoKey(rawBrevoApiKey);
+
+  // Sender email is strictly imperialitbd2011@gmail.com
+  const senderEmail = "imperialitbd2011@gmail.com";
+  const senderName = fromName || process.env.BREVO_SENDER_NAME || DEFAULT_BREVO_CONFIG.senderName;
+  const outboundHeaders = createAntiSpamHeaders(senderEmail, to, headers);
+
+  // Brevo SMTP Relay Username: Always enforce b866f6001@smtp-brevo.com for relay authentication
+  const envSmtpUser = process.env.BREVO_SMTP_USER;
+  const brevoSmtpUser =
+    envSmtpUser && envSmtpUser.includes("@smtp-brevo.com")
+      ? envSmtpUser
+      : DEFAULT_BREVO_CONFIG.smtpUser;
+
+  const brevoSmtpPass = parseBrevoKey(process.env.BREVO_SMTP_KEY) || DEFAULT_BREVO_CONFIG.smtpKey;
+  const brevoSmtpServer = process.env.BREVO_SMTP_SERVER || DEFAULT_BREVO_CONFIG.smtpServer;
+  const brevoSmtpPort = Number(process.env.BREVO_SMTP_PORT) || DEFAULT_BREVO_CONFIG.smtpPort;
+
+  // 1. Try Brevo SMTP via Nodemailer relay (verified and bypasses cloud IP whitelisting)
+  if (brevoSmtpUser && brevoSmtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: brevoSmtpServer,
+        port: brevoSmtpPort,
+        secure: false, // Port 587 uses STARTTLS
+        auth: {
+          user: brevoSmtpUser,
+          pass: brevoSmtpPass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"${senderName}" <${senderEmail}>`,
+        replyTo: senderEmail,
+        to: toName ? `"${toName}" <${to}>` : to,
+        ...(cc && cc.length > 0 ? { cc } : {}),
+        subject,
+        text,
+        html,
+        headers: outboundHeaders,
+      });
+
+      return { success: true };
+    } catch (smtpErr: any) {
+      console.warn("Brevo SMTP relay send failed (will attempt REST API):", smtpErr?.message || smtpErr);
+    }
+  }
+
+  // 2. Try Brevo REST API as fallback
+  if (brevoApiKey && senderEmail) {
+    try {
+      const toList = [{ email: to, ...(toName ? { name: toName } : {}) }];
+      const ccList = Array.isArray(cc) ? cc.filter(Boolean).map((e) => ({ email: e })) : undefined;
+
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "api-key": brevoApiKey,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          sender: {
+            name: senderName,
+            email: senderEmail,
+          },
+          to: toList,
+          ...(ccList && ccList.length > 0 ? { cc: ccList } : {}),
+          subject,
+          htmlContent: html,
+          ...(text ? { textContent: text } : {}),
+          headers: outboundHeaders,
+        }),
+      });
+
+      if (response.ok) {
+        return { success: true };
+      }
+
+      const errorData = await response.json().catch(() => ({}));
+      console.warn("Brevo REST API error:", errorData);
+    } catch (apiErr) {
+      console.warn("Brevo REST API request failed:", apiErr);
+    }
+  }
+
+  const noConfigMsg = "Mailer warning: Outbound mail service could not dispatch email.";
+  console.warn(noConfigMsg);
+  return { success: false, error: noConfigMsg };
+}
+
+// =============================================================================
+// Application Email Services (Optimized for Deliverability & Anti-Spam)
+// =============================================================================
+
+/**
+ * 1. Password Reset OTP Verification Email
  */
 export async function sendOTPEmail(data: { email: string; otp: string }) {
   const { email, otp } = data;
@@ -334,73 +806,43 @@ export async function sendOTPEmail(data: { email: string; otp: string }) {
   const appBaseUrl = await getAppBaseUrl();
   const displayHost = getDisplayHost(appBaseUrl);
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Password Reset OTP</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .cell-content { padding: 20px 16px !important; }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f0f7ff; font-family: Arial, Helvetica, sans-serif; color: #0D47A1;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f7ff;">
-    <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; border: 1px solid #90CAF9; overflow: hidden; box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);">
-          <tr>
-            <td style="background-color: #0D47A1; padding: 20px; text-align: center;">
-              <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">Password Reset Request</h1>
-            </td>
-          </tr>
-          <tr>
-            <td class="cell-content" style="padding: 28px 24px; text-align: center; color: #1E293B;">
-              <p style="font-size: 15px; margin: 0 0 16px 0; color: #334155;">
-                You requested a one-time verification code to reset your administrative password.
-              </p>
-              <div style="background-color: #E3F2FD; border: 2px dashed #2196F3; border-radius: 8px; padding: 18px 24px; margin: 24px 0; display: inline-block;">
-                <span style="font-family: monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #0D47A1; display: block;">${otp}</span>
-              </div>
-              <p style="font-size: 13px; color: #64748B; margin: 0 0 8px 0; line-height: 1.5;">
-                This OTP code is valid for <strong>10 minutes</strong>.
-              </p>
-              <p style="font-size: 12px; color: #94A3B8; margin: 0; line-height: 1.4;">
-                If you did not make this request, please ignore this email. Your password will remain unchanged.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+  const options: RenderEmailOptions = {
+    title: "Password Reset Verification Code",
+    preheader: `Your verification code is ${otp}. Valid for 10 minutes to reset your administrative password.`,
+    badgeLabel: "Security Code",
+    badgeVariant: "blue",
+    heading: "Password Reset Request",
+    recipientName: "Administrator",
+    leadHtml: "You requested a one-time verification code to reset your account password in the Client Registry system.",
+    leadTextPlain: "You requested a one-time verification code to reset your account password in the Client Registry system.",
+    callout: {
+      title: "One-Time Verification Code (OTP)",
+      text: "Please enter this 6-digit code in the verification prompt to continue:",
+      code: otp,
+      subtext: "This security code expires in 10 minutes and can only be used once.",
+      variant: "blue",
+    },
+    keyValues: [
+      { label: "Valid For", value: "10 Minutes" },
+      { label: "Action", value: "Password Reset" },
+      { label: "Security Status", value: "Protected" },
+    ],
+    noteHtml: "<strong>Security notice:</strong> If you did not make this request, please disregard this email. Your password and account remain completely safe.",
+    noteTextPlain: "If you did not make this request, please disregard this message. Your password and account remain completely safe.",
+    cta: {
+      label: "Open Login Portal",
+      url: `${appBaseUrl}/login`,
+    },
+    appBaseUrl,
+    displayHost,
+  };
 
-  const text = `
-Password Reset Request
-
-Your one-time verification code (OTP) is: ${otp}
-
-This code is valid for 10 minutes. If you did not make this request, please ignore this message.
-
-Client Registry Management System (${displayHost})
-  `.trim();
+  const html = buildOptimizedEmailHtml(options);
+  const text = buildOptimizedEmailText(options);
 
   return sendEmail({
     to: email,
-    subject: "Your Password Reset OTP Code",
+    subject: `Password Reset Verification Code: ${otp}`,
     html,
     text,
   });
@@ -434,158 +876,53 @@ export async function sendTaskAssignmentEmail(data: TaskEmailData) {
   const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(dueDate);
+  const assignedByText = assignedByName || "Administrator";
 
-  const priorityColor =
-    priority === "Urgent" || priority === "Argent"
-      ? "#DC2626"
-      : priority === "High"
-      ? "#EF4444"
-      : priority === "Low"
-      ? "#10B981"
-      : "#2196F3";
+  const keyValues: EmailKeyValue[] = [
+    { label: "Task Title", value: taskTitle },
+    { label: "Assigned By", value: assignedByText },
+    { label: "Scheduled Due", value: formattedDate },
+    {
+      label: "Priority",
+      value: priority.toUpperCase(),
+      isBadge: true,
+      badgeVariant: priority.toLowerCase() === "high" || priority.toLowerCase() === "urgent" ? "rose" : "blue",
+    },
+  ];
 
-  const assignedByText = assignedByName ? assignedByName : "Administrator";
+  if (institutionName) {
+    keyValues.push({ label: "Institution", value: institutionName });
+  }
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Task Assignment</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .cell-content { padding: 20px 14px !important; }
-      .stack-td { display: block !important; width: 100% !important; box-sizing: border-box !important; }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f0f7ff; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f7ff;">
-    <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #90CAF9; overflow: hidden; box-shadow: 0 4px 14px rgba(13, 71, 161, 0.08);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #0D47A1; padding: 20px 24px; text-align: center;">
-              <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">New Task Assignment</h1>
-            </td>
-          </tr>
+  const options: RenderEmailOptions = {
+    title: `Task Assignment: ${taskTitle}`,
+    preheader: `You have been assigned a new task: "${taskTitle}". Scheduled for ${formattedDate}.`,
+    badgeLabel: "Task Assignment",
+    badgeVariant: "blue",
+    heading: "New Task Assigned to You",
+    recipientName: assignedToName,
+    leadHtml: `A new task titled "<strong>${escapeHtml(taskTitle)}</strong>" has been assigned to you by <strong>${escapeHtml(assignedByText)}</strong>.`,
+    leadTextPlain: `A new task titled "${taskTitle}" has been assigned to you by ${assignedByText}.`,
+    keyValues,
+    noteHtml: description
+      ? `<strong>Task Description:</strong><br /><span style="color: #334155;">${escapeHtml(description)}</span>`
+      : undefined,
+    noteTextPlain: description ? `Description: ${description}` : undefined,
+    cta: {
+      label: "View Task on Dashboard",
+      url: currentTasksUrl,
+    },
+    appBaseUrl,
+    displayHost,
+  };
 
-          <!-- Body -->
-          <tr>
-            <td class="cell-content" style="padding: 26px 24px;">
-              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${assignedToName}</strong>,</p>
-              <p style="font-size: 14px; line-height: 1.5; margin: 0 0 20px 0; color: #475569;">
-                You have been assigned a new task by <strong>${assignedByText}</strong>. Please review the details below:
-              </p>
-
-              <!-- Details Table -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid ${priorityColor}; border-radius: 8px; margin-bottom: 24px;">
-                <tr>
-                  <td style="padding: 16px;">
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 130px; color: #64748B;">Task Title:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #0D47A1;">${taskTitle}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Assigned By:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${assignedByText}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Due Date:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 600; color: #1E293B;">${formattedDate}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Priority:</td>
-                        <td class="stack-td" style="padding: 6px 0;">
-                          <span style="background-color: ${priorityColor}; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
-                            ${priority}
-                          </span>
-                        </td>
-                      </tr>
-                      ${
-                        institutionName
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Institution:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${institutionName}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                      ${
-                        description
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B; vertical-align: top;">Description:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #334155; line-height: 1.5; white-space: pre-wrap;">${description}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                    </table>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Action Button -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
-                      Open Task Dashboard
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Access URL: <a href="${currentTasksUrl}" style="color: #2196F3; text-decoration: underline;">${currentTasksUrl}</a>
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-
-  const text = `
-New Task Assignment: ${taskTitle}
-
-Hello ${assignedToName},
-
-You have been assigned a new task by ${assignedByText}.
-
-Task Title: ${taskTitle}
-Assigned By: ${assignedByText}
-Due Date: ${formattedDate}
-Priority: ${priority}
-${institutionName ? `Institution: ${institutionName}\n` : ""}${description ? `Description: ${description}\n` : ""}
-Open Task Dashboard:
-${currentTasksUrl}
-
-Client Registry Management System (${displayHost})
-  `.trim();
+  const html = buildOptimizedEmailHtml(options);
+  const text = buildOptimizedEmailText(options);
 
   return await sendEmail({
     to: assignedToEmail,
     toName: assignedToName,
-    subject: `New Task Assigned: ${taskTitle}`,
+    subject: `Task Assignment: ${taskTitle}`,
     text,
     html,
   });
@@ -621,151 +958,58 @@ export async function sendTaskDueSoonEmail(data: TaskAlertEmailData) {
   const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(dueDate);
-
   const assignedByText = assignedByName || "Administrator";
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Deadline Reminder</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .cell-content { padding: 20px 14px !important; }
-      .stack-td { display: block !important; width: 100% !important; }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f0f7ff; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f7ff;">
-    <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #90CAF9; overflow: hidden; box-shadow: 0 4px 14px rgba(13, 71, 161, 0.08);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #0D47A1; padding: 20px 24px; text-align: center;">
-              <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">Task Reminder — Due in 2 Hours</h1>
-            </td>
-          </tr>
+  const keyValues: EmailKeyValue[] = [
+    { label: "Task Title", value: taskTitle },
+    { label: "Deadline", value: `${formattedDate} (Within 2 Hours)` },
+    {
+      label: "Priority",
+      value: priority.toUpperCase(),
+      isBadge: true,
+      badgeVariant: "amber",
+    },
+    { label: "Assigned By", value: assignedByText },
+  ];
 
-          <!-- Body -->
-          <tr>
-            <td class="cell-content" style="padding: 26px 24px;">
-              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${assignedToName}</strong>,</p>
-              <div style="background-color: #E3F2FD; border-left: 4px solid #2196F3; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0D47A1;">
-                  ⏰ Deadline Alert: The deadline for this task is in approximately 2 hours.
-                </p>
-              </div>
+  if (institutionName) {
+    keyValues.push({ label: "Institution", value: institutionName });
+  }
 
-              <!-- Details Table -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 24px;">
-                <tr>
-                  <td style="padding: 16px;">
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 130px; color: #64748B;">Task Title:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #0D47A1;">${taskTitle}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Deadline:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #EF4444;">${formattedDate} (Within 2 hours)</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Priority:</td>
-                        <td class="stack-td" style="padding: 6px 0;">
-                          <span style="background-color: #2196F3; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
-                            ${priority}
-                          </span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Assigned By:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${assignedByText}</td>
-                      </tr>
-                      ${
-                        institutionName
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Institution:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${institutionName}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                      ${
-                        description
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B; vertical-align: top;">Description:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #334155; line-height: 1.5; white-space: pre-wrap;">${description}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                    </table>
-                  </td>
-                </tr>
-              </table>
+  const options: RenderEmailOptions = {
+    title: `Task Due Soon: ${taskTitle}`,
+    preheader: `Reminder: Your assigned task "${taskTitle}" is scheduled for completion within the next 2 hours.`,
+    badgeLabel: "Due in 2 Hours",
+    badgeVariant: "amber",
+    heading: "Task Deadline Reminder",
+    recipientName: assignedToName,
+    leadHtml: `This is an automated reminder that your assigned task "<strong>${escapeHtml(taskTitle)}</strong>" is due within <strong>2 hours</strong>.`,
+    leadTextPlain: `This is an automated reminder that your assigned task "${taskTitle}" is due within 2 hours.`,
+    callout: {
+      title: "Upcoming Deadline (Within 2 Hours)",
+      text: "Please finalize your work or submit a progress update on the dashboard before the scheduled deadline.",
+      variant: "amber",
+    },
+    keyValues,
+    noteHtml: description
+      ? `<strong>Task Description:</strong><br /><span style="color: #334155;">${escapeHtml(description)}</span>`
+      : undefined,
+    noteTextPlain: description ? `Description: ${description}` : undefined,
+    cta: {
+      label: "Update Task on Dashboard",
+      url: currentTasksUrl,
+    },
+    appBaseUrl,
+    displayHost,
+  };
 
-              <!-- Action Button -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
-                      Complete or Update Task
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Direct link: <a href="${currentTasksUrl}" style="color: #2196F3; text-decoration: underline;">${currentTasksUrl}</a>
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-
-  const text = `
-Task Reminder — Due in 2 Hours: ${taskTitle}
-
-Hello ${assignedToName},
-
-This is an automated reminder that your assigned task is due within 2 hours.
-
-Task: ${taskTitle}
-Deadline: ${formattedDate}
-Priority: ${priority}
-Assigned By: ${assignedByText}
-${institutionName ? `Institution: ${institutionName}\n` : ""}${description ? `Description: ${description}\n` : ""}
-View and update on Dashboard:
-${currentTasksUrl}
-
-Client Registry Management System (${displayHost})
-  `.trim();
+  const html = buildOptimizedEmailHtml(options);
+  const text = buildOptimizedEmailText(options);
 
   return await sendEmail({
     to: assignedToEmail,
     toName: assignedToName,
-    subject: `[REMINDER] Task Due in 2 Hours: ${taskTitle}`,
+    subject: `Task Reminder: "${taskTitle}" is due in 2 hours`,
     text,
     html,
   });
@@ -803,163 +1047,57 @@ export async function sendMonthlyTaskReminderEmail(data: TaskAlertEmailData): Pr
   const formattedDate = formatDhakaDateTime(dueDate);
   const assignedByText = assignedByName || "Administrator";
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monthly Task Reminder — Due Tomorrow</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .cell-content { padding: 20px 14px !important; }
-      .stack-td { display: block !important; width: 100% !important; }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f3f0ff; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f3f0ff;">
-    <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #d8b4fe; overflow: hidden; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.08);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #6D28D9; padding: 20px 24px; text-align: center;">
-              <div style="display: inline-block; background-color: rgba(255,255,255,0.2); color: #ffffff; font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 12px; margin-bottom: 6px; letter-spacing: 0.5px;">
-                🔁 MONTHLY RECURRING TASK
-              </div>
-              <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">Monthly Task Reminder — Due Tomorrow</h1>
-            </td>
-          </tr>
+  const keyValues: EmailKeyValue[] = [
+    { label: "Task Title", value: taskTitle },
+    { label: "Scheduled Due", value: `${formattedDate} (Tomorrow)` },
+    { label: "Cycle", value: "Monthly Recurring", isBadge: true, badgeVariant: "blue" },
+    {
+      label: "Priority",
+      value: priority.toUpperCase(),
+      isBadge: true,
+      badgeVariant: priority.toLowerCase() === "high" ? "rose" : "blue",
+    },
+    { label: "Assigned By", value: assignedByText },
+  ];
 
-          <!-- Body -->
-          <tr>
-            <td class="cell-content" style="padding: 26px 24px;">
-              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${assignedToName}</strong>,</p>
-              <div style="background-color: #F5F3FF; border-left: 4px solid #7C3AED; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 0; font-size: 14px; font-weight: 600; color: #5B21B6;">
-                  📅 1-Day Advance Notice: You have a monthly recurring task due tomorrow.
-                </p>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #6D28D9;">
-                  This repeated monthly task is scheduled for completion tomorrow. Please prepare in advance.
-                </p>
-              </div>
+  if (institutionName) {
+    keyValues.push({ label: "Institution", value: institutionName });
+  }
 
-              <!-- Details Table -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 24px;">
-                <tr>
-                  <td style="padding: 16px;">
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 130px; color: #64748B;">Task Title:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #6D28D9;">${taskTitle}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Due Date:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #B45309;">${formattedDate} (Tomorrow)</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Task Cycle:</td>
-                        <td class="stack-td" style="padding: 6px 0;">
-                          <span style="background-color: #7C3AED; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
-                            🔁 Repeats Every Month
-                          </span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Priority:</td>
-                        <td class="stack-td" style="padding: 6px 0;">
-                          <span style="background-color: #2196F3; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
-                            ${priority}
-                          </span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Assigned By:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${assignedByText}</td>
-                      </tr>
-                      ${
-                        institutionName
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Institution:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${institutionName}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                      ${
-                        description
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B; vertical-align: top;">Description:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #334155; line-height: 1.5; white-space: pre-wrap;">${description}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                    </table>
-                  </td>
-                </tr>
-              </table>
+  const options: RenderEmailOptions = {
+    title: `Monthly Task Reminder: ${taskTitle}`,
+    preheader: `Upcoming monthly task: "${taskTitle}" is scheduled for tomorrow (${formattedDate}).`,
+    badgeLabel: "Monthly Recurring",
+    badgeVariant: "blue",
+    heading: "Monthly Task Reminder — Due Tomorrow",
+    recipientName: assignedToName,
+    leadHtml: `This is an advance notice that your monthly recurring task "<strong>${escapeHtml(taskTitle)}</strong>" is due <strong>tomorrow</strong>.`,
+    leadTextPlain: `This is an advance notice that your monthly recurring task "${taskTitle}" is due tomorrow.`,
+    callout: {
+      title: "Monthly Recurrence Notice",
+      text: "Monthly recurring tasks can be completed on or after their scheduled date. Upon completion, the task will automatically clone and rollover for next month.",
+      variant: "blue",
+    },
+    keyValues,
+    noteHtml: description
+      ? `<strong>Task Description:</strong><br /><span style="color: #334155;">${escapeHtml(description)}</span>`
+      : undefined,
+    noteTextPlain: description ? `Description: ${description}` : undefined,
+    cta: {
+      label: "View Task Details",
+      url: currentTasksUrl,
+    },
+    appBaseUrl,
+    displayHost,
+  };
 
-              <!-- Action Button -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #7C3AED; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(124, 58, 237, 0.3);">
-                      Open Tasks Dashboard
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Direct link: <a href="${currentTasksUrl}" style="color: #7C3AED; text-decoration: underline;">${currentTasksUrl}</a>
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #F5F3FF; padding: 14px; text-align: center; font-size: 12px; color: #6D28D9; border-top: 1px solid #DDD6FE;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #6D28D9; text-decoration: underline;">${displayHost}</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-
-  const text = `
-Monthly Task 1-Day Advance Reminder: ${taskTitle}
-
-Hello ${assignedToName},
-
-This is an automated 1-day reminder that your monthly recurring task is due tomorrow.
-
-Task: ${taskTitle}
-Deadline: ${formattedDate} (Tomorrow)
-Cycle: Repeats Monthly
-Priority: ${priority}
-Assigned By: ${assignedByText}
-${institutionName ? `Institution: ${institutionName}\n` : ""}${description ? `Description: ${description}\n` : ""}
-View and update on Dashboard:
-${currentTasksUrl}
-
-Client Registry Management System (${displayHost})
-  `.trim();
+  const html = buildOptimizedEmailHtml(options);
+  const text = buildOptimizedEmailText(options);
 
   return await sendEmail({
     to: assignedToEmail,
     toName: assignedToName,
-    subject: `[MONTHLY TASK REMINDER] 1-Day Notice: ${taskTitle} is due tomorrow`,
+    subject: `Monthly Task Reminder: "${taskTitle}" is due tomorrow`,
     text,
     html,
   });
@@ -988,178 +1126,79 @@ export async function sendTaskOverdueEmail(data: TaskAlertEmailData): Promise<{ 
     timeOverdueText,
   } = data;
 
-  const finalRecipientEmail = assignedToEmail?.trim() || assignerEmail?.trim() || "imperialitbd2011@gmail.com";
-  const finalRecipientName = assignedToName || assignedByName || "Team Administrator";
+  const finalRecipientEmail = assignedToEmail || assignerEmail;
+  const finalRecipientName = assignedToName || assignedByName || "Team Member";
 
   if (!finalRecipientEmail) {
-    return { success: false, error: "No recipient email address found for overdue task." };
+    return { success: false, error: "No recipient email address available for overdue alert." };
+  }
+
+  const ccList: string[] = [];
+  if (assignerEmail && assignedToEmail && assignerEmail.toLowerCase() !== assignedToEmail.toLowerCase()) {
+    ccList.push(assignerEmail);
   }
 
   const appBaseUrl = await getAppBaseUrl();
   const currentTasksUrl = `${appBaseUrl}/tasks`;
   const displayHost = getDisplayHost(appBaseUrl);
 
-  // CC list for overdue alert: ensure assigner and admin are notified
-  const ccList: string[] = [];
-  if (assignerEmail && assignerEmail.trim().toLowerCase() !== finalRecipientEmail.toLowerCase()) {
-    ccList.push(assignerEmail.trim());
-  }
-  const defaultAdmin = "imperialitbd2011@gmail.com";
-  if (
-    finalRecipientEmail.toLowerCase() !== defaultAdmin.toLowerCase() &&
-    !ccList.some((c) => c.toLowerCase() === defaultAdmin.toLowerCase())
-  ) {
-    ccList.push(defaultAdmin);
-  }
-
   const formattedDate = formatDhakaDateTime(dueDate);
-
   const assignedByText = assignedByName || "Administrator";
-  const overdueInfo = timeOverdueText || "This task has exceeded its scheduled deadline.";
+  const overdueDuration = timeOverdueText ? ` (${timeOverdueText})` : "";
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Overdue Alert</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .cell-content { padding: 20px 14px !important; }
-      .stack-td { display: block !important; width: 100% !important; }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f0f7ff; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f7ff;">
-    <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #EF4444; overflow: hidden; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.12);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #DC2626; padding: 20px 24px; text-align: center;">
-              <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">⚠️ Overdue Task Alert</h1>
-            </td>
-          </tr>
+  const keyValues: EmailKeyValue[] = [
+    { label: "Task Title", value: taskTitle },
+    { label: "Original Deadline", value: formattedDate },
+    { label: "Status", value: `OVERDUE${overdueDuration}`, isBadge: true, badgeVariant: "rose" },
+    {
+      label: "Priority",
+      value: priority.toUpperCase(),
+      isBadge: true,
+      badgeVariant: "rose",
+    },
+    { label: "Assigned To", value: assignedToName || "Unassigned" },
+    { label: "Assigned By", value: assignedByText },
+  ];
 
-          <!-- Body -->
-          <tr>
-            <td class="cell-content" style="padding: 26px 24px;">
-              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${assignedToName}</strong>,</p>
-              <div style="background-color: #FEF2F2; border-left: 4px solid #DC2626; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px;">
-                <p style="margin: 0; font-size: 14px; font-weight: bold; color: #991B1B;">
-                  ${overdueInfo} Immediate action is requested.
-                </p>
-              </div>
+  if (institutionName) {
+    keyValues.push({ label: "Institution", value: institutionName });
+  }
 
-              <!-- Details Table -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #DC2626; border-radius: 8px; margin-bottom: 24px;">
-                <tr>
-                  <td style="padding: 16px;">
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 130px; color: #64748B;">Task Title:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #0D47A1;">${taskTitle}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Due Date:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #DC2626;">${formattedDate} (Overdue)</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Priority:</td>
-                        <td class="stack-td" style="padding: 6px 0;">
-                          <span style="background-color: #DC2626; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
-                            ${priority}
-                          </span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Assigned By:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${assignedByText}</td>
-                      </tr>
-                      ${
-                        institutionName
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Institution:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${institutionName}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                      ${
-                        description
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B; vertical-align: top;">Description:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #334155; line-height: 1.5; white-space: pre-wrap;">${description}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                    </table>
-                  </td>
-                </tr>
-              </table>
+  const options: RenderEmailOptions = {
+    title: `Task Overdue Notice: ${taskTitle}`,
+    preheader: `Action Required: Task "${taskTitle}" has passed its scheduled deadline and requires immediate attention.`,
+    badgeLabel: "Action Required — Overdue",
+    badgeVariant: "rose",
+    heading: "Task Overdue Notice",
+    recipientName: finalRecipientName,
+    leadHtml: `The task "<strong>${escapeHtml(taskTitle)}</strong>" has passed its scheduled deadline and is now marked as <strong>OVERDUE</strong>.`,
+    leadTextPlain: `The task "${taskTitle}" has passed its scheduled deadline and is now marked as OVERDUE.`,
+    callout: {
+      title: "Immediate Action Required",
+      text: "Please resolve this task on your dashboard or provide a status update to ensure project schedules remain on track.",
+      variant: "rose",
+    },
+    keyValues,
+    noteHtml: description
+      ? `<strong>Task Description:</strong><br /><span style="color: #334155;">${escapeHtml(description)}</span>`
+      : undefined,
+    noteTextPlain: description ? `Description: ${description}` : undefined,
+    cta: {
+      label: "Resolve Task on Dashboard",
+      url: currentTasksUrl,
+    },
+    appBaseUrl,
+    displayHost,
+  };
 
-              <!-- Action Button -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #DC2626; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(220, 38, 38, 0.3);">
-                      Resolve Overdue Task
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Direct link: <a href="${currentTasksUrl}" style="color: #2196F3; text-decoration: underline;">${currentTasksUrl}</a>
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-
-  const text = `
-OVERDUE ALERT: ${taskTitle}
-
-Hello ${assignedToName},
-
-This task has exceeded its scheduled deadline and is now marked as OVERDUE.
-
-Task: ${taskTitle}
-Due Date: ${formattedDate} (Overdue)
-Priority: ${priority}
-Assigned By: ${assignedByText}
-${institutionName ? `Institution: ${institutionName}\n` : ""}${description ? `Description: ${description}\n` : ""}
-Please resolve this task on your dashboard immediately:
-${currentTasksUrl}
-
-Client Registry Management System (${displayHost})
-  `.trim();
+  const html = buildOptimizedEmailHtml(options);
+  const text = buildOptimizedEmailText(options);
 
   return await sendEmail({
     to: finalRecipientEmail,
     toName: finalRecipientName,
     ...(ccList.length > 0 ? { cc: ccList } : {}),
-    subject: `[OVERDUE ALERT] Task Overdue: ${taskTitle}`,
+    subject: `Task Overdue Notice: "${taskTitle}" has exceeded its deadline`,
     text,
     html,
   });
@@ -1177,12 +1216,10 @@ export async function sendTaskCompletionEmail(data: TaskCompletionEmailData) {
 
   const {
     taskTitle,
-    description,
     dueDate,
     completionNote,
     institutionName,
     completedByName,
-    assignedByName,
     recipientEmail,
     recipientName,
   } = data;
@@ -1194,161 +1231,52 @@ export async function sendTaskCompletionEmail(data: TaskCompletionEmailData) {
   const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDueDate = formatDhakaDateTime(dueDate);
-
   const completionDate = formatDhakaDateTime(new Date());
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Completed Confirmation</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .cell-content { padding: 20px 14px !important; }
-      .stack-td { display: block !important; width: 100% !important; }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f0f7ff; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f7ff;">
-    <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #10B981; overflow: hidden; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.1);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #059669; padding: 20px 24px; text-align: center;">
-              <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">✓ Task Completed Successfully</h1>
-            </td>
-          </tr>
+  const keyValues: EmailKeyValue[] = [
+    { label: "Task Title", value: taskTitle },
+    { label: "Completed By", value: completedByName },
+    { label: "Status", value: "COMPLETED", isBadge: true, badgeVariant: "emerald" },
+    { label: "Completion Time", value: completionDate },
+    { label: "Original Due Date", value: formattedDueDate },
+  ];
 
-          <!-- Body -->
-          <tr>
-            <td class="cell-content" style="padding: 26px 24px;">
-              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${recipientName}</strong>,</p>
-              <p style="font-size: 14px; line-height: 1.5; margin: 0 0 20px 0; color: #475569;">
-                The following task has been marked as <strong>Completed</strong> by <strong>${completedByName}</strong>.
-              </p>
+  if (institutionName) {
+    keyValues.push({ label: "Institution", value: institutionName });
+  }
 
-              <!-- Details Table -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #10B981; border-radius: 8px; margin-bottom: 24px;">
-                <tr>
-                  <td style="padding: 16px;">
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 140px; color: #64748B;">Task Title:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #0D47A1;">${taskTitle}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Completed By:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 600; color: #059669;">${completedByName}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Completion Time:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${completionDate}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Original Due Date:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${formattedDueDate}</td>
-                      </tr>
-                      ${
-                        institutionName
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Institution:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B;">${institutionName}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                      ${
-                        completionNote
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #059669; vertical-align: top;">Completion Note:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #1E293B; line-height: 1.5; font-weight: 500; white-space: pre-wrap;">${completionNote}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                    </table>
-                  </td>
-                </tr>
-              </table>
+  const options: RenderEmailOptions = {
+    title: `Task Completed: ${taskTitle}`,
+    preheader: `Task "${taskTitle}" has been marked as completed by ${completedByName}.`,
+    badgeLabel: "Task Completed",
+    badgeVariant: "emerald",
+    heading: "Task Marked as Completed",
+    recipientName,
+    leadHtml: `The task "<strong>${escapeHtml(taskTitle)}</strong>" has been completed by <strong>${escapeHtml(completedByName)}</strong>.`,
+    leadTextPlain: `The task "${taskTitle}" has been completed by ${completedByName}.`,
+    keyValues,
+    noteHtml: completionNote
+      ? `<strong>Completion Note:</strong><br /><span style="color: #334155;">${escapeHtml(completionNote)}</span>`
+      : undefined,
+    noteTextPlain: completionNote ? `Completion Note: ${completionNote}` : undefined,
+    cta: {
+      label: "View Completed Task",
+      url: currentTasksUrl,
+    },
+    appBaseUrl,
+    displayHost,
+  };
 
-              <!-- Action Button -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td align="center" style="padding: 8px 0 20px 0;">
-                    <a href="${currentTasksUrl}" target="_blank" style="background-color: #2196F3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 3px 8px rgba(33, 150, 243, 0.3);">
-                      View on Dashboard
-                    </a>
-                  </td>
-                </tr>
-              </table>
+  const html = buildOptimizedEmailHtml(options);
+  const text = buildOptimizedEmailText(options);
 
-              <p style="font-size: 12px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Direct link: <a href="${currentTasksUrl}" style="color: #2196F3; text-decoration: underline;">${currentTasksUrl}</a>
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #E3F2FD; padding: 14px; text-align: center; font-size: 12px; color: #0D47A1; border-top: 1px solid #90CAF9;">
-              Client Registry Management System &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0D47A1; text-decoration: underline;">${displayHost}</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-
-  const text = `
-Task Completed: ${taskTitle}
-
-Hello ${recipientName},
-
-The following task has been marked as Completed by ${completedByName}:
-
-Task Title: ${taskTitle}
-Completed By: ${completedByName}
-Completion Time: ${completionDate}
-Original Due Date: ${formattedDueDate}
-${institutionName ? `Institution: ${institutionName}\n` : ""}${completionNote ? `Completion Note: ${completionNote}\n` : ""}
-View on Dashboard:
-${currentTasksUrl}
-
-Client Registry Management System (${displayHost})
-  `.trim();
   return await sendEmail({
     to: recipientEmail,
     toName: recipientName,
-    subject: `[COMPLETED] Task Completed: ${taskTitle}`,
+    subject: `Task Completed: "${taskTitle}" has been resolved`,
     text,
     html,
   });
-}
-
-export interface WebsiteExpiryAlertEmailData {
-  institutionName: string;
-  institutionNameBangla?: string | null;
-  domain?: string | null;
-  category?: string | null;
-  expireDate: Date | string;
-  daysRemaining: number;
-  contactName?: string | null;
-  contactPhone?: string | null;
-  recipientEmail: string;
-  recipientName?: string;
-  adminEmailCopy?: string | null;
 }
 
 /**
@@ -1360,13 +1288,10 @@ export async function sendWebsiteExpiryAlertEmail(
 ): Promise<{ success: boolean; error?: string }> {
   const {
     institutionName,
-    institutionNameBangla,
     domain,
     category,
     expireDate,
     daysRemaining,
-    contactName,
-    contactPhone,
     recipientEmail,
     recipientName,
     adminEmailCopy,
@@ -1380,9 +1305,6 @@ export async function sendWebsiteExpiryAlertEmail(
   const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(expireDate);
-  const displayName = institutionNameBangla
-    ? `${institutionName} (${institutionNameBangla})`
-    : institutionName;
   const isWebsite = (category || "").toLowerCase() !== "software";
   const itemType = isWebsite ? "Website License" : "Software License";
 
@@ -1391,175 +1313,71 @@ export async function sendWebsiteExpiryAlertEmail(
     ccList.push(adminEmailCopy.trim());
   }
 
-  const urgencyColor = daysRemaining <= 7 ? "#DC2626" : daysRemaining <= 15 ? "#EA580C" : "#0284C7";
+  const badgeVariant: "rose" | "amber" | "blue" =
+    daysRemaining <= 7 ? "rose" : daysRemaining <= 15 ? "amber" : "blue";
+  const badgeLabel =
+    daysRemaining <= 7 ? "Urgent Expiration" : daysRemaining <= 15 ? "Expiring Soon" : "Renewal Reminder";
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${itemType} Expiry Notice</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .cell-content { padding: 20px 14px !important; }
-      .stack-td { display: block !important; width: 100% !important; }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc;">
-    <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #CBD5E1; overflow: hidden; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background-color: ${urgencyColor}; padding: 22px 24px; text-align: center;">
-              <div style="display: inline-block; background-color: rgba(255,255,255,0.2); color: #ffffff; font-size: 11px; font-weight: bold; padding: 3px 12px; border-radius: 12px; margin-bottom: 8px; letter-spacing: 0.5px;">
-                🔔 EXPIRATION NOTICE
-              </div>
-              <h1 style="margin: 0; font-size: 19px; font-weight: 700; color: #ffffff;">
-                ${itemType} Expiring in ${daysRemaining} Days
-              </h1>
-            </td>
-          </tr>
+  const cleanDomain = domain ? domain.replace(/^https?:\/\//, "").trim() : "";
 
-          <!-- Body -->
-          <tr>
-            <td class="cell-content" style="padding: 26px 24px;">
-              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${recipientName || "Valued Client"}</strong>,</p>
-              
-              <div style="background-color: #F8FAFC; border-left: 4px solid ${urgencyColor}; padding: 14px 16px; border-radius: 6px; margin-bottom: 22px;">
-                <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0F172A;">
-                  ⚠️ Your ${itemType.toLowerCase()} for <strong>${institutionName}</strong> is scheduled to expire soon.
-                </p>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748B;">
-                  Scheduled Expiry Date: <strong>${formattedDate}</strong> (${daysRemaining} days remaining).
-                </p>
-              </div>
+  const keyValues: EmailKeyValue[] = [
+    { label: "Institution", value: institutionName },
+    ...(cleanDomain
+      ? [
+          {
+            label: "Website Domain",
+            value: cleanDomain,
+            isLink: true,
+            linkUrl: `https://${cleanDomain}`,
+          },
+        ]
+      : []),
+    { label: "Service Category", value: category || "Website" },
+    { label: "Scheduled Expiry", value: formattedDate },
+    {
+      label: "Time Remaining",
+      value: `${daysRemaining} Days`,
+      isBadge: true,
+      badgeVariant,
+    },
+  ];
 
-              <!-- Details Table -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 24px;">
-                <tr>
-                  <td style="padding: 16px;">
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 140px; color: #64748B;">Institution:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #0F172A;">${displayName}</td>
-                      </tr>
-                      ${
-                        domain
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Website Domain:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 600; color: #0284C7;">
-                          <a href="https://${domain.replace(/^https?:\/\//, "")}" target="_blank" style="color: #0284C7; text-decoration: underline;">
-                            ${domain}
-                          </a>
-                        </td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Category:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #334155;">${category || "Website"}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Scheduled Expiry:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: ${urgencyColor};">${formattedDate}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Time Remaining:</td>
-                        <td class="stack-td" style="padding: 6px 0;">
-                          <span style="background-color: ${urgencyColor}; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
-                            ${daysRemaining} Days Remaining
-                          </span>
-                        </td>
-                      </tr>
-                      ${
-                        contactName
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Contact Person:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #334155;">${contactName} ${contactPhone ? `(${contactPhone})` : ""}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                    </table>
-                  </td>
-                </tr>
-              </table>
+  const options: RenderEmailOptions = {
+    title: `${itemType} Expiry Notice: ${cleanDomain || institutionName}`,
+    preheader: `Notice: The ${itemType.toLowerCase()} for ${institutionName} expires in ${daysRemaining} days on ${formattedDate}.`,
+    badgeLabel,
+    badgeVariant,
+    heading: `${itemType} Expiring in ${daysRemaining} Days`,
+    recipientName: recipientName || "Valued Client",
+    leadHtml: `The ${itemType.toLowerCase()} for <strong>${escapeHtml(institutionName)}</strong>${cleanDomain ? ` (<code>${escapeHtml(cleanDomain)}</code>)` : ""} is scheduled to expire in <strong>${daysRemaining} days</strong>.`,
+    leadTextPlain: `The ${itemType.toLowerCase()} for ${institutionName}${cleanDomain ? ` (${cleanDomain})` : ""} is scheduled to expire in ${daysRemaining} days.`,
+    callout: {
+      title: "Renewal Reminder",
+      text: `Scheduled Expiration: ${formattedDate}. Please renew your domain and hosting services prior to this date to ensure continuous website availability.`,
+      variant: badgeVariant,
+    },
+    keyValues,
+    noteHtml: "To initiate renewal or if you have any questions regarding your services, please contact our support team.",
+    noteTextPlain: "To initiate renewal or if you have questions, please contact our support team.",
+    cta: {
+      label: "Open Registry Dashboard",
+      url: appBaseUrl,
+    },
+    appBaseUrl,
+    displayHost,
+  };
 
-              <!-- Notice Box -->
-              <p style="font-size: 13px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
-                To ensure uninterrupted service and prevent automatic suspension or domain deactivation, please renew your subscription or contact our administrative team before <strong>${formattedDate}</strong>.
-              </p>
-
-              <!-- Footer note -->
-              <p style="font-size: 11px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Client Registry Management System &middot; This automated notice is calculated based on scheduled license expiration.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #F1F5F9; padding: 14px; text-align: center; font-size: 12px; color: #475569; border-top: 1px solid #E2E8F0;">
-              Imperial IT &middot; Client Registry &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #0284C7; text-decoration: underline;">${displayHost}</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-
-  const text = `
-${itemType.toUpperCase()} EXPIRATION NOTICE: ${institutionName}
-
-Hello ${recipientName || "Valued Client"},
-
-Your ${itemType.toLowerCase()} for ${institutionName} (${domain || ""}) is scheduled to expire in ${daysRemaining} days on ${formattedDate}.
-
-Institution: ${displayName}
-Domain: ${domain || "N/A"}
-Scheduled Expiry: ${formattedDate}
-Time Remaining: ${daysRemaining} days
-
-Please contact us or renew your license to avoid service disruption.
-
-Client Registry Management System (${displayHost})
-  `.trim();
+  const html = buildOptimizedEmailHtml(options);
+  const text = buildOptimizedEmailText(options);
 
   return await sendEmail({
     to: recipientEmail,
     toName: recipientName,
     ...(ccList.length > 0 ? { cc: ccList } : {}),
-    subject: `[EXPIRY NOTICE] ${itemType}: ${domain || institutionName} (${daysRemaining} Days Remaining)`,
+    subject: `${itemType} Expiry Notice: ${cleanDomain || institutionName} (${daysRemaining} days remaining)`,
     text,
     html,
   });
-}
-
-export interface CompanySubscriptionExpiryAlertEmailData {
-  companyName: string;
-  companyNameBangla?: string | null;
-  softwareName: string;
-  billingCycle: string;
-  expireDate: Date | string;
-  daysRemaining: number;
-  contactPerson?: string | null;
-  contactPhone?: string | null;
-  recipientEmail: string;
-  recipientName?: string;
-  adminEmailCopy?: string | null;
 }
 
 /**
@@ -1570,12 +1388,10 @@ export async function sendCompanySubscriptionExpiryAlertEmail(
 ): Promise<{ success: boolean; error?: string }> {
   const {
     companyName,
-    companyNameBangla,
     softwareName,
     billingCycle,
     expireDate,
     daysRemaining,
-    contactPerson,
     recipientEmail,
     recipientName,
     adminEmailCopy,
@@ -1589,155 +1405,63 @@ export async function sendCompanySubscriptionExpiryAlertEmail(
   const displayHost = getDisplayHost(appBaseUrl);
 
   const formattedDate = formatDhakaDateTime(expireDate);
-  const displayName = companyNameBangla ? `${companyName} (${companyNameBangla})` : companyName;
 
   const ccList: string[] = [];
   if (adminEmailCopy && adminEmailCopy.trim().toLowerCase() !== recipientEmail.toLowerCase()) {
     ccList.push(adminEmailCopy.trim());
   }
 
-  const urgencyColor = daysRemaining <= 7 ? "#DC2626" : daysRemaining <= 15 ? "#EA580C" : "#7C3AED";
+  const badgeVariant: "rose" | "amber" | "blue" =
+    daysRemaining <= 7 ? "rose" : daysRemaining <= 15 ? "amber" : "blue";
+  const badgeLabel =
+    daysRemaining <= 7 ? "Urgent Expiration" : daysRemaining <= 15 ? "Expiring Soon" : "Subscription Notice";
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Software Subscription Expiry Notice</title>
-  <style type="text/css">
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .cell-content { padding: 20px 14px !important; }
-      .stack-td { display: block !important; width: 100% !important; }
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: Arial, Helvetica, sans-serif; color: #1E293B;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc;">
-    <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #CBD5E1; overflow: hidden; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background-color: ${urgencyColor}; padding: 22px 24px; text-align: center;">
-              <div style="display: inline-block; background-color: rgba(255,255,255,0.2); color: #ffffff; font-size: 11px; font-weight: bold; padding: 3px 12px; border-radius: 12px; margin-bottom: 8px; letter-spacing: 0.5px;">
-                🔄 SUBSCRIPTION RENEWAL NOTICE
-              </div>
-              <h1 style="margin: 0; font-size: 19px; font-weight: 700; color: #ffffff;">
-                ${softwareName} Subscription Expiring in ${daysRemaining} Days
-              </h1>
-            </td>
-          </tr>
+  const keyValues: EmailKeyValue[] = [
+    { label: "Company", value: companyName },
+    { label: "Software / Plan", value: softwareName },
+    { label: "Billing Cycle", value: billingCycle },
+    { label: "Scheduled Expiry", value: formattedDate },
+    {
+      label: "Time Remaining",
+      value: `${daysRemaining} Days`,
+      isBadge: true,
+      badgeVariant,
+    },
+  ];
 
-          <!-- Body -->
-          <tr>
-            <td class="cell-content" style="padding: 26px 24px;">
-              <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${recipientName || contactPerson || "Valued Customer"}</strong>,</p>
-              
-              <div style="background-color: #F8FAFC; border-left: 4px solid ${urgencyColor}; padding: 14px 16px; border-radius: 6px; margin-bottom: 22px;">
-                <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0F172A;">
-                  Your software subscription for <strong>${softwareName}</strong> is approaching its renewal date.
-                </p>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748B;">
-                  Scheduled Expiry: <strong>${formattedDate}</strong> (${daysRemaining} days remaining).
-                </p>
-              </div>
+  const options: RenderEmailOptions = {
+    title: `Subscription Expiry Notice: ${softwareName}`,
+    preheader: `Notice: The subscription for ${softwareName} (${companyName}) expires in ${daysRemaining} days on ${formattedDate}.`,
+    badgeLabel,
+    badgeVariant,
+    heading: `Software Subscription Expiring in ${daysRemaining} Days`,
+    recipientName: recipientName || "Valued Client",
+    leadHtml: `The software license subscription for <strong>${escapeHtml(softwareName)}</strong> registered under <strong>${escapeHtml(companyName)}</strong> is scheduled to expire in <strong>${daysRemaining} days</strong>.`,
+    leadTextPlain: `The software license subscription for ${softwareName} registered under ${companyName} is scheduled to expire in ${daysRemaining} days.`,
+    callout: {
+      title: "Scheduled Renewal",
+      text: `Expiry Date: ${formattedDate}. Please renew your subscription to maintain uninterrupted access to software services.`,
+      variant: badgeVariant,
+    },
+    keyValues,
+    noteHtml: "Please contact Imperial IT to renew your subscription and maintain continuous service access.",
+    noteTextPlain: "Please contact Imperial IT to renew your subscription and maintain continuous service access.",
+    cta: {
+      label: "Open Registry Dashboard",
+      url: appBaseUrl,
+    },
+    appBaseUrl,
+    displayHost,
+  };
 
-              <!-- Details Table -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 24px;">
-                <tr>
-                  <td style="padding: 16px;">
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; width: 140px; color: #64748B;">Company:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #0F172A;">${displayName}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Software Product:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: #7C3AED;">${softwareName}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Billing Cycle:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #334155;">${billingCycle}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Expiry Date:</td>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: 700; color: ${urgencyColor};">${formattedDate}</td>
-                      </tr>
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Days Remaining:</td>
-                        <td class="stack-td" style="padding: 6px 0;">
-                          <span style="background-color: ${urgencyColor}; color: #ffffff; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">
-                            ${daysRemaining} Days
-                          </span>
-                        </td>
-                      </tr>
-                      ${
-                        contactPerson
-                          ? `
-                      <tr>
-                        <td class="stack-td" style="padding: 6px 0; font-weight: bold; color: #64748B;">Contact Person:</td>
-                        <td class="stack-td" style="padding: 6px 0; color: #334155;">${contactPerson}</td>
-                      </tr>
-                      `
-                          : ""
-                      }
-                    </table>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Notice Box -->
-              <p style="font-size: 13px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
-                Please ensure timely renewal before <strong>${formattedDate}</strong> to avoid any interruption in software operations or service license deactivation.
-              </p>
-
-              <p style="font-size: 11px; color: #94A3B8; text-align: center; margin: 0; line-height: 1.4;">
-                Client Registry Management System &middot; Automated Software Subscription Notification
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #F1F5F9; padding: 14px; text-align: center; font-size: 12px; color: #475569; border-top: 1px solid #E2E8F0;">
-              Imperial IT &middot; Client Registry &copy; ${new Date().getFullYear()} &middot; <a href="${appBaseUrl}" style="color: #7C3AED; text-decoration: underline;">${displayHost}</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-
-  const text = `
-SUBSCRIPTION RENEWAL NOTICE: ${softwareName} for ${companyName}
-
-Hello ${recipientName || contactPerson || "Valued Customer"},
-
-Your subscription for ${softwareName} is scheduled to expire in ${daysRemaining} days on ${formattedDate}.
-
-Company: ${displayName}
-Product: ${softwareName}
-Billing Cycle: ${billingCycle}
-Expiry Date: ${formattedDate}
-Days Remaining: ${daysRemaining} days
-
-Please contact us to renew your subscription.
-
-Client Registry Management System (${displayHost})
-  `.trim();
+  const html = buildOptimizedEmailHtml(options);
+  const text = buildOptimizedEmailText(options);
 
   return await sendEmail({
     to: recipientEmail,
     toName: recipientName,
     ...(ccList.length > 0 ? { cc: ccList } : {}),
-    subject: `[SUBSCRIPTION NOTICE] ${softwareName} Expiry Notice for ${companyName} (${daysRemaining} Days Remaining)`,
+    subject: `Subscription Expiry Notice: ${softwareName} for ${companyName} (${daysRemaining} days remaining)`,
     text,
     html,
   });

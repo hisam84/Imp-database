@@ -100,7 +100,7 @@ export function TargetedClientForm({ initial, onClose, onSaved }: Props) {
           <Field label="Institute Name (Bangla)">
             <input
               type="text"
-              placeholder="e.g. ঢাকা হাই স্কুল"
+              placeholder="e.g. Dhaka High School (Bengali Name)"
               value={form.instituteNameBangla}
               onChange={(e) => update("instituteNameBangla", e.target.value)}
               className={`${inputClass} font-bengali`}

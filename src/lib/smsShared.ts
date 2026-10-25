@@ -117,10 +117,10 @@ export interface AdnSmsStatusResponse {
 }
 
 export const DEFAULT_SMS_TEMPLATE =
-  "শ্রদ্ধেয় গ্রাহক, আপনার {instituteName} এর ডোমেইন ({domain}) আগামী {expireDate} তারিখে এক্সপায়ার হতে যাচ্ছে (বাকি {daysRemaining} দিন)। সেবা সচল রাখতে দ্রুত নবায়ন করুন। {companyName} হেল্পলাইন: {companyPhone}";
+  "Dear customer, the domain ({domain}) for {instituteName} is scheduled to expire on {expireDate} ({daysRemaining} days remaining). Please renew promptly to ensure uninterrupted service. {companyName} Helpline: {companyPhone}";
 
 export const DEFAULT_EXPIRED_SMS_TEMPLATE =
-  "শ্রদ্ধেয় গ্রাহক, আপনার {instituteName} এর ডোমেইন ({domain}) গত {expireDate} তারিখে এক্সপায়ার হয়ে গেছে। সেবা সচল রাখতে অবিলম্বে নবায়ন করুন। {companyName} হেল্পলাইন: {companyPhone}";
+  "Dear customer, the domain ({domain}) for {instituteName} has expired on {expireDate}. Please renew immediately to restore services. {companyName} Helpline: {companyPhone}";
 
 export const DEFAULT_SMS_SETTINGS: SmsSettings = {
   enabled: true,
@@ -294,12 +294,12 @@ export function renderSmsTemplate(
   }
 
   const map: { [key: string]: string } = {
-    "{instituteName}": variables.instituteName || variables.instituteNameBangla || "প্রতিষ্ঠান",
-    "{instituteNameBangla}": variables.instituteNameBangla || variables.instituteName || "প্রতিষ্ঠান",
-    "{domain}": variables.domain || "ডোমেইন",
-    "{expireDate}": formattedDate || "শীঘ্রই",
-    "{daysRemaining}": variables.daysRemaining !== undefined && variables.daysRemaining !== null ? String(variables.daysRemaining) : "০",
-    "{contactPerson}": variables.contactPerson || "সম্মানিত গ্রাহক",
+    "{instituteName}": variables.instituteName || variables.instituteNameBangla || "Institution",
+    "{instituteNameBangla}": variables.instituteNameBangla || variables.instituteName || "Institution",
+    "{domain}": variables.domain || "Domain",
+    "{expireDate}": formattedDate || "Soon",
+    "{daysRemaining}": variables.daysRemaining !== undefined && variables.daysRemaining !== null ? String(variables.daysRemaining) : "0",
+    "{contactPerson}": variables.contactPerson || "Valued Client",
     "{companyName}": variables.companyName || "Imperial IT",
     "{companyPhone}": variables.companyPhone || "",
   };

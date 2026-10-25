@@ -132,6 +132,7 @@ export function isInternalOrMigratedCustomField(key: string) {
   return (
     key === "isDeactivated" ||
     key === "callUpdates" ||
+    key === "communicationLogs" ||
     key === "googleMapsUrl" ||
     key === "inChargeTeacher2" ||
     key === "inChargeTeacher2Contact" ||
@@ -196,6 +197,28 @@ export interface CallUpdate {
   createdAt: string;
 }
 
+export type CommunicationChannel = "EMAIL" | "SMS";
+export type CommunicationStatus = "SUCCESS" | "FAILED" | "PENDING";
+
+export interface CommunicationLog {
+  id: string;
+  type: CommunicationChannel;
+  institutionId: string;
+  institutionName: string;
+  domain?: string | null;
+  recipient: string;
+  recipientName?: string | null;
+  recipientLabel?: string | null;
+  subject: string;
+  content: string;
+  status: CommunicationStatus;
+  trigger?: string;
+  milestoneDays?: number;
+  error?: string | null;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
 export interface CustomFieldDef {
   id: string;
   key: string;
@@ -234,6 +257,7 @@ export interface Institution {
   googleMapsUrl?: string | null;
   customFields: Record<string, any>;
   callUpdates?: CallUpdate[];
+  communicationLogs?: CommunicationLog[];
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
