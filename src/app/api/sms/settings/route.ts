@@ -4,6 +4,7 @@ import {
   saveSmsSettings,
   DEFAULT_SMS_SETTINGS,
   DEFAULT_SMS_TEMPLATE,
+  DEFAULT_EXPIRED_SMS_TEMPLATE,
   SmsSettings,
 } from "@/lib/smsSettings";
 import { getServerOutboundIp } from "@/lib/adnSmsService";
@@ -32,6 +33,7 @@ export async function GET() {
       serverPublicIp,
       defaults: DEFAULT_SMS_SETTINGS,
       defaultTemplate: DEFAULT_SMS_TEMPLATE,
+      defaultExpiredTemplate: DEFAULT_EXPIRED_SMS_TEMPLATE,
     });
   } catch (error: any) {
     console.error("GET /api/sms/settings error:", error);
@@ -98,6 +100,14 @@ export async function PUT(req: NextRequest) {
 
     if (typeof body.template === "string" && body.template.trim()) {
       payloadToSave.template = body.template;
+    }
+
+    if (typeof body.expiredTemplate === "string" && body.expiredTemplate.trim()) {
+      payloadToSave.expiredTemplate = body.expiredTemplate;
+    }
+
+    if (typeof body.sendExpiredAlerts === "boolean") {
+      payloadToSave.sendExpiredAlerts = body.sendExpiredAlerts;
     }
 
     if (typeof body.companyPhone === "string") {

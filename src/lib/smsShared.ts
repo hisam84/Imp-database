@@ -22,6 +22,8 @@ export interface SmsSettings {
   recipientTargets: RecipientTargetsConfig;
   sendMode: "first_available" | "all_selected";
   template: string;
+  expiredTemplate: string;
+  sendExpiredAlerts: boolean;
   companyPhone: string;
   companyName: string;
   adminCopyPhone?: string;
@@ -117,6 +119,9 @@ export interface AdnSmsStatusResponse {
 export const DEFAULT_SMS_TEMPLATE =
   "শ্রদ্ধেয় গ্রাহক, আপনার {instituteName} এর ডোমেইন ({domain}) আগামী {expireDate} তারিখে এক্সপায়ার হতে যাচ্ছে (বাকি {daysRemaining} দিন)। সেবা সচল রাখতে দ্রুত নবায়ন করুন। {companyName} হেল্পলাইন: {companyPhone}";
 
+export const DEFAULT_EXPIRED_SMS_TEMPLATE =
+  "শ্রদ্ধেয় গ্রাহক, আপনার {instituteName} এর ডোমেইন ({domain}) গত {expireDate} তারিখে এক্সপায়ার হয়ে গেছে। সেবা সচল রাখতে অবিলম্বে নবায়ন করুন। {companyName} হেল্পলাইন: {companyPhone}";
+
 export const DEFAULT_SMS_SETTINGS: SmsSettings = {
   enabled: true,
   apiKey: "",
@@ -133,6 +138,8 @@ export const DEFAULT_SMS_SETTINGS: SmsSettings = {
   },
   sendMode: "first_available",
   template: DEFAULT_SMS_TEMPLATE,
+  expiredTemplate: DEFAULT_EXPIRED_SMS_TEMPLATE,
+  sendExpiredAlerts: true,
   companyPhone: "01711223344",
   companyName: "Imperial IT",
   adminCopyPhone: "",

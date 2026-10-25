@@ -7,6 +7,7 @@ import {
   SmsSettings,
   DEFAULT_SMS_SETTINGS,
   DEFAULT_SMS_TEMPLATE,
+  DEFAULT_EXPIRED_SMS_TEMPLATE,
   renderSmsTemplate,
   calculateSmsParts,
   normalizeBdPhoneNumber,
@@ -18,6 +19,8 @@ export default function SmsSettingsPage() {
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<"gateway" | "rules" | "template" | "logs">("gateway");
+  // Template Sub-Tab (Expiring Soon vs Domain Expired)
+  const [templateSubTab, setTemplateSubTab] = useState<"expiring" | "expired">("expiring");
 
   // Settings State
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,7 @@ export default function SmsSettingsPage() {
   const [balanceResult, setBalanceResult] = useState<{
     success: boolean;
     smsBalance?: number;
+    apiResponseMessage?: string;
     error?: string;
   } | null>(null);
 
@@ -328,14 +332,21 @@ export default function SmsSettingsPage() {
   }
 
   function handleInsertPlaceholder(tag: string) {
-    setSettings((prev) => ({
-      ...prev,
-      template: prev.template + " " + tag,
-    }));
+    if (templateSubTab === "expiring") {
+      setSettings((prev) => ({
+        ...prev,
+        template: prev.template ? `${prev.template} ${tag}` : tag,
+      }));
+    } else {
+      setSettings((prev) => ({
+        ...prev,
+        expiredTemplate: prev.expiredTemplate ? `${prev.expiredTemplate} ${tag}` : tag,
+      }));
+    }
   }
 
-  // Calculate SMS parts for current template
-  const sampleRendered = renderSmsTemplate(settings.template, {
+  // Calculate SMS parts for expiring reminder template
+  const sampleExpiringRendered = renderSmsTemplate(settings.template, {
     instituteName: "Dhaka Model School & College",
     instituteNameBangla: "ঢাকা মডেল স্কুল অ্যান্ড কলেজ",
     domain: "dhakamodel.edu.bd",
@@ -345,8 +356,26 @@ export default function SmsSettingsPage() {
     companyName: settings.companyName || "Imperial IT",
     companyPhone: settings.companyPhone || "01711223344",
   });
+  const expiringSmsMetrics = calculateSmsParts(sampleExpiringRendered);
 
-  const smsMetrics = calculateSmsParts(sampleRendered);
+  // Calculate SMS parts for domain expired template
+  const sampleExpiredRendered = renderSmsTemplate(
+    settings.expiredTemplate || DEFAULT_EXPIRED_SMS_TEMPLATE,
+    {
+      instituteName: "Dhaka Model School & College",
+      instituteNameBangla: "ঢাকা মডেল স্কুল অ্যান্ড কলেজ",
+      domain: "dhakamodel.edu.bd",
+      expireDate: new Date(Date.now() - 1 * 86400000), // expired yesterday
+      daysRemaining: 0,
+      contactPerson: "Principal / In-Charge",
+      companyName: settings.companyName || "Imperial IT",
+      companyPhone: settings.companyPhone || "01711223344",
+    }
+  );
+  const expiredSmsMetrics = calculateSmsParts(sampleExpiredRendered);
+
+  const activeRendered = templateSubTab === "expiring" ? sampleExpiringRendered : sampleExpiredRendered;
+  const activeSmsMetrics = templateSubTab === "expiring" ? expiringSmsMetrics : expiredSmsMetrics;
 
   // Filter logs
   const filteredLogs = logs.filter((log) => {
@@ -1083,6 +1112,43 @@ export default function SmsSettingsPage() {
               </div>
             </div>
 
+            {/* Automated Expired Domain Alert Toggle */}
+            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>Automated Expired Domain Alert</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Automatically dispatch an SMS alert once when a domain expires (on Day 0 or Day -1).
+                  </p>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={settings.sendExpiredAlerts}
+                    onChange={(e) =>
+                      setSettings({ ...settings, sendExpiredAlerts: e.target.checked })
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0D47A1]"></div>
+                  <span className="ml-3 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {settings.sendExpiredAlerts ? "Enabled" : "Disabled"}
+                  </span>
+                </label>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/70 dark:border-slate-800/70 text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2.5">
+                <span className="text-base shrink-0">ℹ️</span>
+                <span>
+                  When enabled, any client whose domain expires will receive the customized <strong>Domain Expired Message Template</strong> once upon expiry. This alert shares the recipient phone targets and send mode configured below.
+                </span>
+              </div>
+            </div>
+
             {/* Recipient Number Selection & Mode */}
             <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-5">
               <div>
@@ -1300,170 +1366,223 @@ export default function SmsSettingsPage() {
 
         {/* TAB 3: SMS TEMPLATE & REALTIME PHONE PREVIEW */}
         {activeTab === "template" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in">
-            {/* Template Editor Column */}
-            <div className="lg:col-span-7 space-y-4 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <span>✏️</span>
-                    <span>SMS Template Editor</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Customize the message sent to clients prior to domain expiration.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, template: DEFAULT_SMS_TEMPLATE })}
-                  className="text-xs font-semibold text-[#0D47A1] dark:text-[#90CAF9] hover:underline"
-                >
-                  Reset Default
-                </button>
-              </div>
+          <div className="space-y-4 animate-in fade-in">
+            {/* Sub-tab Pill Switcher */}
+            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 w-fit">
+              <button
+                type="button"
+                onClick={() => setTemplateSubTab("expiring")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  templateSubTab === "expiring"
+                    ? "bg-white dark:bg-slate-900 text-[#0D47A1] dark:text-[#90CAF9] shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                }`}
+              >
+                <span>⏳</span>
+                <span>Expiring Soon Reminder</span>
+              </button>
 
-              {/* Placeholder Pills */}
-              <div>
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
-                  Click to insert dynamic placeholder variables:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { tag: "{instituteName}", label: "Institution Name" },
-                    { tag: "{domain}", label: "Domain Name" },
-                    { tag: "{expireDate}", label: "Expire Date" },
-                    { tag: "{daysRemaining}", label: "Days Left" },
-                    { tag: "{companyPhone}", label: "Helpline Phone" },
-                    { tag: "{companyName}", label: "Company Name" },
-                    { tag: "{contactPerson}", label: "Contact Person" },
-                    { tag: "{instituteNameBangla}", label: "Bangla Name" },
-                  ].map((p) => (
-                    <button
-                      key={p.tag}
-                      type="button"
-                      onClick={() => handleInsertPlaceholder(p.tag)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-mono transition-colors cursor-pointer"
-                    >
-                      + {p.tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Textarea */}
-              <div className="space-y-2">
-                <textarea
-                  rows={6}
-                  value={settings.template}
-                  onChange={(e) => setSettings({ ...settings, template: e.target.value })}
-                  placeholder="Enter SMS template..."
-                  className="w-full p-4 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1] leading-relaxed"
-                />
-
-                {/* Character & Segment Count Bar */}
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        smsMetrics.isUnicode
-                          ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300"
-                          : "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
-                      }`}
-                    >
-                      {smsMetrics.isUnicode ? "Unicode (Bangla)" : "Standard (English)"}
-                    </span>
-                    <span className="text-slate-600 dark:text-slate-400 font-mono">
-                      {sampleRendered.length} characters
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="text-slate-500">
-                      Remaining in part: <strong>{smsMetrics.charsRemainingInCurrentPart}</strong>
-                    </span>
-                    <span className="text-slate-300">|</span>
-                    <span
-                      className={`font-bold ${
-                        smsMetrics.smsCount > 1
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-emerald-600 dark:text-emerald-400"
-                      }`}
-                    >
-                      Total: {smsMetrics.smsCount} SMS {smsMetrics.smsCount > 1 ? "(Multi-part)" : "(Single)"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <button
-                  onClick={handleSaveSettings}
-                  disabled={saving}
-                  className="px-5 py-2.5 bg-[#0D47A1] hover:bg-[#1565C0] text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  {saving ? "Saving..." : "Save Template"}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setTemplateSubTab("expired")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  templateSubTab === "expired"
+                    ? "bg-white dark:bg-slate-900 text-[#0D47A1] dark:text-[#90CAF9] shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                }`}
+              >
+                <span>⚠️</span>
+                <span>Domain Expired Alert</span>
+              </button>
             </div>
 
-            {/* Smartphone Live Preview Mockup Column */}
-            <div className="lg:col-span-5 flex flex-col items-center justify-start p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 block">
-                Realistic Smartphone Live Preview
-              </span>
-
-              {/* Device Frame */}
-              <div className="w-[280px] sm:w-[310px] rounded-[36px] p-3 bg-slate-900 shadow-2xl border-4 border-slate-800 relative">
-                {/* Speaker notch */}
-                <div className="w-24 h-4 bg-slate-900 rounded-b-xl mx-auto absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center">
-                  <div className="w-10 h-1 bg-slate-700 rounded-full" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Template Editor Column */}
+              <div className="lg:col-span-7 space-y-4 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <span>✏️</span>
+                      <span>
+                        {templateSubTab === "expiring"
+                          ? "Upcoming Expiry Template Editor"
+                          : "Domain Expired Template Editor"}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      {templateSubTab === "expiring"
+                        ? "Customize the message sent to clients prior to domain expiration."
+                        : "Customize the message sent immediately when a domain expires (Day 0 / -1)."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (templateSubTab === "expiring") {
+                        setSettings({ ...settings, template: DEFAULT_SMS_TEMPLATE });
+                      } else {
+                        setSettings({ ...settings, expiredTemplate: DEFAULT_EXPIRED_SMS_TEMPLATE });
+                      }
+                    }}
+                    className="text-xs font-semibold text-[#0D47A1] dark:text-[#90CAF9] hover:underline cursor-pointer"
+                  >
+                    Reset Default
+                  </button>
                 </div>
 
-                {/* Screen */}
-                <div className="w-full rounded-[26px] bg-slate-100 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 flex flex-col min-h-[440px]">
-                  {/* Status Bar */}
-                  <div className="h-8 bg-slate-200/70 dark:bg-slate-900/80 px-4 flex items-center justify-between text-[10px] font-semibold text-slate-600 dark:text-slate-400 pt-1">
-                    <span>10:30 AM</span>
-                    <div className="flex items-center gap-1.5">
-                      <span>4G</span>
-                      <span>📶</span>
-                      <span>🔋 95%</span>
-                    </div>
+                {/* Placeholder Pills */}
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
+                    Click to insert dynamic placeholder variables:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { tag: "{instituteName}", label: "Institution Name" },
+                      { tag: "{domain}", label: "Domain Name" },
+                      { tag: "{expireDate}", label: "Expire Date" },
+                      { tag: "{daysRemaining}", label: "Days Left" },
+                      { tag: "{companyPhone}", label: "Helpline Phone" },
+                      { tag: "{companyName}", label: "Company Name" },
+                      { tag: "{contactPerson}", label: "Contact Person" },
+                      { tag: "{instituteNameBangla}", label: "Bangla Name" },
+                    ].map((p) => (
+                      <button
+                        key={p.tag}
+                        type="button"
+                        onClick={() => handleInsertPlaceholder(p.tag)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-mono transition-colors cursor-pointer"
+                      >
+                        + {p.tag}
+                      </button>
+                    ))}
                   </div>
+                </div>
 
-                  {/* SMS Header */}
-                  <div className="px-3 py-2 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-[#0D47A1] text-white font-bold text-xs flex items-center justify-center shrink-0">
-                      IT
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold truncate">
-                        {settings.campaignTitle || "Imperial_IT"}
-                      </div>
-                      <div className="text-[9px] text-slate-400">ADN SMS Verified</div>
-                    </div>
-                  </div>
+                {/* Textarea */}
+                <div className="space-y-2">
+                  <textarea
+                    rows={6}
+                    value={templateSubTab === "expiring" ? settings.template : settings.expiredTemplate}
+                    onChange={(e) => {
+                      if (templateSubTab === "expiring") {
+                        setSettings({ ...settings, template: e.target.value });
+                      } else {
+                        setSettings({ ...settings, expiredTemplate: e.target.value });
+                      }
+                    }}
+                    placeholder={
+                      templateSubTab === "expiring"
+                        ? "Enter upcoming expiry SMS template..."
+                        : "Enter domain expired SMS template..."
+                    }
+                    className="w-full p-4 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D47A1] leading-relaxed"
+                  />
 
-                  {/* SMS Conversation View */}
-                  <div className="flex-1 p-3 space-y-3 overflow-y-auto flex flex-col justify-end">
-                    <div className="text-center">
-                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 text-slate-500 font-medium">
-                        Today 10:30 AM
+                  {/* Character & Segment Count Bar */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          activeSmsMetrics.isUnicode
+                            ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300"
+                            : "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+                        }`}
+                      >
+                        {activeSmsMetrics.isUnicode ? "Unicode (Bangla)" : "Standard (English)"}
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-400 font-mono">
+                        {activeRendered.length} characters
                       </span>
                     </div>
 
-                    {/* Incoming SMS Bubble */}
-                    <div className="self-start max-w-[90%] p-3 rounded-2xl rounded-tl-sm bg-white dark:bg-slate-800/90 shadow-sm border border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-800 dark:text-slate-100 leading-relaxed font-sans select-none whitespace-pre-wrap">
-                      {sampleRendered}
-                      <div className="text-[9px] text-slate-400 text-right mt-1.5">
-                        10:30 AM • SMS
-                      </div>
+                    <div className="flex items-center gap-2 font-mono">
+                      <span className="text-slate-500">
+                        Remaining in part: <strong>{activeSmsMetrics.charsRemainingInCurrentPart}</strong>
+                      </span>
+                      <span className="text-slate-300">|</span>
+                      <span
+                        className={`font-bold ${
+                          activeSmsMetrics.smsCount > 1
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-emerald-600 dark:text-emerald-400"
+                        }`}
+                      >
+                        Total: {activeSmsMetrics.smsCount} SMS {activeSmsMetrics.smsCount > 1 ? "(Multi-part)" : "(Single)"}
+                      </span>
                     </div>
                   </div>
+                </div>
 
-                  {/* Bottom Home Indicator */}
-                  <div className="h-5 bg-transparent flex items-center justify-center">
-                    <div className="w-24 h-1 bg-slate-400/60 rounded-full" />
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={saving}
+                    className="px-5 py-2.5 bg-[#0D47A1] hover:bg-[#1565C0] text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {saving ? "Saving..." : "Save Template"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Smartphone Live Preview Mockup Column */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-start p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 block">
+                  Realistic Smartphone Live Preview ({templateSubTab === "expiring" ? "Expiring Soon" : "Domain Expired"})
+                </span>
+
+                {/* Device Frame */}
+                <div className="w-[280px] sm:w-[310px] rounded-[36px] p-3 bg-slate-900 shadow-2xl border-4 border-slate-800 relative">
+                  {/* Speaker notch */}
+                  <div className="w-24 h-4 bg-slate-900 rounded-b-xl mx-auto absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center">
+                    <div className="w-10 h-1 bg-slate-700 rounded-full" />
+                  </div>
+
+                  {/* Screen */}
+                  <div className="w-full rounded-[26px] bg-slate-100 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 flex flex-col min-h-[440px]">
+                    {/* Status Bar */}
+                    <div className="h-8 bg-slate-200/70 dark:bg-slate-900/80 px-4 flex items-center justify-between text-[10px] font-semibold text-slate-600 dark:text-slate-400 pt-1">
+                      <span>10:30 AM</span>
+                      <div className="flex items-center gap-1.5">
+                        <span>4G</span>
+                        <span>📶</span>
+                        <span>🔋 95%</span>
+                      </div>
+                    </div>
+
+                    {/* SMS Header */}
+                    <div className="px-3 py-2 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-[#0D47A1] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                        IT
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold truncate">
+                          {settings.campaignTitle || "Imperial_IT"}
+                        </div>
+                        <div className="text-[9px] text-slate-400">QSMS Verified</div>
+                      </div>
+                    </div>
+
+                    {/* SMS Conversation View */}
+                    <div className="flex-1 p-3 space-y-3 overflow-y-auto flex flex-col justify-end">
+                      <div className="text-center">
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 text-slate-500 font-medium">
+                          Today 10:30 AM
+                        </span>
+                      </div>
+
+                      {/* Incoming SMS Bubble */}
+                      <div className="self-start max-w-[90%] p-3 rounded-2xl rounded-tl-sm bg-white dark:bg-slate-800/90 shadow-sm border border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-800 dark:text-slate-100 leading-relaxed font-sans select-none whitespace-pre-wrap">
+                        {activeRendered}
+                        <div className="text-[9px] text-slate-400 text-right mt-1.5">
+                          10:30 AM • SMS
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Home Indicator */}
+                    <div className="h-5 bg-transparent flex items-center justify-center">
+                      <div className="w-24 h-1 bg-slate-400/60 rounded-full" />
+                    </div>
                   </div>
                 </div>
               </div>

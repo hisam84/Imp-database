@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getSmsSettings,
   renderSmsTemplate,
+  DEFAULT_EXPIRED_SMS_TEMPLATE,
   SmsSettings,
 } from "@/lib/smsSettings";
 import {
@@ -133,6 +134,43 @@ export async function clearPersistedSmsExpiryAlerts(options?: { clearLogs?: bool
 }
 
 /**
+ * Resolves candidate contact numbers from an institution according to recipientTargets settings.
+ */
+function getValidRecipients(inst: any, settings: SmsSettings): { phone: string; label: string }[] {
+  interface TargetCandidate {
+    label: string;
+    rawNumber: string | null | undefined;
+  }
+  const candidates: TargetCandidate[] = [];
+
+  if (settings.recipientTargets.contact1 && inst.contact1) {
+    candidates.push({ label: "Primary Contact (contact1)", rawNumber: inst.contact1 });
+  }
+  if (settings.recipientTargets.contact2 && inst.contact2) {
+    candidates.push({ label: "Secondary Contact (contact2)", rawNumber: inst.contact2 });
+  }
+  if (settings.recipientTargets.inChargeTeacher && inst.inChargeTeacherContact) {
+    candidates.push({ label: "In-Charge Teacher", rawNumber: inst.inChargeTeacherContact });
+  }
+  if (settings.recipientTargets.btclMobile && inst.btclMobileNo) {
+    candidates.push({ label: "BTCL Mobile", rawNumber: inst.btclMobileNo });
+  }
+
+  const validRecipients: { phone: string; label: string }[] = [];
+  const seenPhones = new Set<string>();
+
+  for (const cand of candidates) {
+    const normalized = normalizeBdPhoneNumber(cand.rawNumber);
+    if (normalized && !seenPhones.has(normalized)) {
+      seenPhones.add(normalized);
+      validRecipients.push({ phone: normalized, label: cand.label });
+    }
+  }
+
+  return validRecipients;
+}
+
+/**
  * Scans all active Institutions nearing domain expiration and dispatches automated SMS alerts.
  */
 export async function checkAndSendSmsExpiryAlerts(options?: {
@@ -169,7 +207,7 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
   const now = new Date();
   const milestones = [...settings.expiryDaysMilestones].sort((a, b) => b - a); // descending
 
-  if (milestones.length === 0) {
+  if (milestones.length === 0 && !settings.sendExpiredAlerts) {
     result.errors.push("No expiry reminder milestones configured in SMS settings.");
     return result;
   }
@@ -209,16 +247,113 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
       // Calculate days difference
       const diffMs = expDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-      // Only evaluate if not already past expired date
-      if (diffDays < 0) continue;
-
       const dateStr = expDate.toISOString().slice(0, 10);
 
-      // Determine which milestone(s) this institution falls into
-      // Find the milestone that corresponds to the current remaining days
-      // E.g. if milestones are [30, 15, 7, 3, 1] and diffDays is 14,
-      // it matches milestone 15 if m15 hasn't been sent yet.
+      // CASE A: DOMAIN IS ALREADY EXPIRED (Day 0 or Day -1)
+      if (diffDays === 0 || diffDays === -1) {
+        if (!settings.sendExpiredAlerts) {
+          continue;
+        }
+
+        const alertKey = `sms-expired-${inst.id}-${dateStr}`;
+
+        if (!options?.force && sentSmsAlertsMemory.has(alertKey)) {
+          result.skippedAlreadySent++;
+          continue;
+        }
+
+        const validRecipients = getValidRecipients(inst, settings);
+        if (validRecipients.length === 0) {
+          result.skippedNoPhone++;
+          continue;
+        }
+
+        const recipientsToDispatch =
+          settings.sendMode === "first_available"
+            ? [validRecipients[0]]
+            : validRecipients;
+
+        const messageBody = renderSmsTemplate(
+          settings.expiredTemplate || DEFAULT_EXPIRED_SMS_TEMPLATE,
+          {
+            instituteName: inst.instituteName,
+            instituteNameBangla: inst.instituteNameBangla,
+            domain: inst.domain,
+            expireDate: expDate,
+            daysRemaining: 0,
+            contactPerson: inst.instituteHead || inst.inChargeTeacher || undefined,
+            companyName: settings.companyName,
+            companyPhone: settings.companyPhone,
+          }
+        );
+
+        let anySuccessForExpired = false;
+
+        for (const recipient of recipientsToDispatch) {
+          try {
+            const sendRes = await sendQsmsSms({
+              to: recipient.phone,
+              message: messageBody,
+              senderId: settings.senderId || settings.campaignTitle,
+              messageType: settings.messageType,
+              credentials: {
+                apiKey: settings.apiKey,
+                apiSecret: settings.apiSecret,
+                apiDomain: settings.apiDomain,
+                senderId: settings.senderId || settings.campaignTitle,
+              },
+            });
+
+            const logItem: SmsLogEntry = {
+              id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              timestamp: new Date().toISOString(),
+              institutionId: inst.id,
+              institutionName: inst.instituteName,
+              domain: inst.domain,
+              recipientPhone: recipient.phone,
+              recipientLabel: recipient.label,
+              milestoneDays: 0, // 0 indicates domain expired alert
+              daysRemaining: diffDays,
+              messageText: messageBody,
+              status: sendRes.success ? "SUCCESS" : "FAILED",
+              smsUid: sendRes.smsUid || null,
+              apiResponseCode: sendRes.apiResponseCode,
+              apiResponseMessage: sendRes.apiResponseMessage,
+              error: sendRes.error || null,
+            };
+
+            newLogs.push(logItem);
+            result.logs.push(logItem);
+
+            if (sendRes.success) {
+              result.smsSent++;
+              anySuccessForExpired = true;
+            } else {
+              result.smsFailed++;
+              result.errors.push(
+                `SMS failed for ${inst.instituteName} (${recipient.phone}): ${sendRes.error}`
+              );
+            }
+          } catch (smsErr: any) {
+            result.smsFailed++;
+            result.errors.push(
+              `Exception sending expired SMS to ${inst.instituteName}: ${smsErr?.message || smsErr}`
+            );
+          }
+        }
+
+        if (anySuccessForExpired) {
+          sentSmsAlertsMemory.add(alertKey);
+          persistedKeys.add(alertKey);
+        }
+
+        continue;
+      }
+
+      // If older than -1 day expired, skip
+      if (diffDays < 0) continue;
+
+      // CASE B: UPCOMING EXPIRY REMINDER MILESTONES (diffDays > 0)
       for (const milestone of milestones) {
         if (diffDays <= milestone) {
           const alertKey = `sms-${inst.id}-m${milestone}-${dateStr}`;
@@ -229,37 +364,7 @@ export async function checkAndSendSmsExpiryAlerts(options?: {
             continue;
           }
 
-          // Resolve target recipient numbers based on configuration
-          interface TargetCandidate {
-            label: string;
-            rawNumber: string | null | undefined;
-          }
-          const candidates: TargetCandidate[] = [];
-
-          if (settings.recipientTargets.contact1 && inst.contact1) {
-            candidates.push({ label: "Primary Contact (contact1)", rawNumber: inst.contact1 });
-          }
-          if (settings.recipientTargets.contact2 && inst.contact2) {
-            candidates.push({ label: "Secondary Contact (contact2)", rawNumber: inst.contact2 });
-          }
-          if (settings.recipientTargets.inChargeTeacher && inst.inChargeTeacherContact) {
-            candidates.push({ label: "In-Charge Teacher", rawNumber: inst.inChargeTeacherContact });
-          }
-          if (settings.recipientTargets.btclMobile && inst.btclMobileNo) {
-            candidates.push({ label: "BTCL Mobile", rawNumber: inst.btclMobileNo });
-          }
-
-          // Normalize and deduplicate candidate phones
-          const validRecipients: { phone: string; label: string }[] = [];
-          const seenPhones = new Set<string>();
-
-          for (const cand of candidates) {
-            const normalized = normalizeBdPhoneNumber(cand.rawNumber);
-            if (normalized && !seenPhones.has(normalized)) {
-              seenPhones.add(normalized);
-              validRecipients.push({ phone: normalized, label: cand.label });
-            }
-          }
+          const validRecipients = getValidRecipients(inst, settings);
 
           if (validRecipients.length === 0) {
             result.skippedNoPhone++;
