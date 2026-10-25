@@ -314,11 +314,13 @@ function ActionMenu({
                     </svg>
                     <span>Call Update</span>
                   </div>
-                  {callCount > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white">
-                      {callCount}
-                    </span>
-                  )}
+                  <span
+                    className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
+                      callCount > 0 ? "bg-amber-500 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {callCount}
+                  </span>
                 </button>
               )}
 
@@ -337,11 +339,13 @@ function ActionMenu({
                     </svg>
                     <span>Email & SMS Logs</span>
                   </div>
-                  {commCount.total > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-500 text-white">
-                      {commCount.total}
-                    </span>
-                  )}
+                  <span
+                    className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
+                      commCount.total > 0 ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {commCount.total}
+                  </span>
                 </button>
               )}
 
@@ -605,7 +609,16 @@ export function InstitutionTable({
                       <svg className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
-                      <span>Call ({callCount})</span>
+                      <span>Call</span>
+                      <span
+                        className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
+                          callCount > 0
+                            ? "bg-amber-500 text-white"
+                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {callCount}
+                      </span>
                     </button>
 
                     <button
@@ -619,7 +632,16 @@ export function InstitutionTable({
                       <svg className="w-3.5 h-3.5 shrink-0 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
-                      <span>Logs ({commCount.total})</span>
+                      <span>Logs</span>
+                      <span
+                        className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
+                          commCount.total > 0
+                            ? "bg-blue-600 text-white shadow-blue-500/25"
+                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {commCount.total}
+                      </span>
                     </button>
 
                     {onAddTask && (
@@ -877,11 +899,15 @@ export function InstitutionTable({
                             />
                           </svg>
                           <span>Call</span>
-                          {callCount > 0 && (
-                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white leading-tight">
-                              {callCount}
-                            </span>
-                          )}
+                          <span
+                            className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
+                              callCount > 0
+                                ? "bg-amber-500 text-white"
+                                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                            }`}
+                          >
+                            {callCount}
+                          </span>
                         </button>
 
                         <button
@@ -890,7 +916,7 @@ export function InstitutionTable({
                             e.stopPropagation();
                             setSelectedLogsInst(inst);
                           }}
-                          className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
+                          className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
                             commCount.total > 0
                               ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/50"
                               : "bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -911,11 +937,15 @@ export function InstitutionTable({
                             />
                           </svg>
                           <span>Logs</span>
-                          {commCount.total > 0 && (
-                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-600 text-white leading-tight">
-                              {commCount.total}
-                            </span>
-                          )}
+                          <span
+                            className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none shadow-xs transition-colors ${
+                              commCount.total > 0
+                                ? "bg-blue-600 text-white shadow-blue-500/25"
+                                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                            }`}
+                          >
+                            {commCount.total}
+                          </span>
                         </button>
                       </div>
                     </td>

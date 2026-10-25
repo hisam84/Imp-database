@@ -57,7 +57,7 @@ export function InstitutionCommunicationSection({ inst, onOpenModal }: Props) {
           <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
             Email & SMS Logs
           </span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none bg-blue-600 text-white shadow-xs">
             {logs.length}
           </span>
         </div>
@@ -108,7 +108,12 @@ export function InstitutionCommunicationSection({ inst, onOpenModal }: Props) {
               onClick={onOpenModal}
               className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 shrink-0 ml-1"
             >
-              <span>View All ({logs.length})</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span>View All</span>
+                <span className="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1.5 rounded-full text-[10px] font-bold leading-none bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                  {logs.length}
+                </span>
+              </span>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
