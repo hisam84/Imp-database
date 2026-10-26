@@ -328,6 +328,11 @@ export function TargetedClientTable({
                           {client.instituteName}
                         </h3>
                         {getPriorityBadge(client.priority)}
+                        {client.category && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 whitespace-nowrap">
+                            {client.category}
+                          </span>
+                        )}
                       </div>
                       {client.instituteNameBangla && (
                         <p className="text-xs text-slate-500 dark:text-slate-400 font-bengali mt-0.5">
@@ -390,6 +395,14 @@ export function TargetedClientTable({
               {isOpen && (
                 <div className="p-3.5 pt-0 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40 text-xs space-y-3">
                   <div className="grid grid-cols-1 gap-2 pt-2 text-slate-600 dark:text-slate-400">
+                    {client.category && (
+                      <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                        <span className="font-medium text-slate-500">Category:</span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                          {client.category}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
                       <span className="font-medium text-slate-500">Location:</span>
                       <span className="font-semibold text-slate-800 dark:text-slate-200">
@@ -529,14 +542,24 @@ export function TargetedClientTable({
                           {client.instituteNameBangla}
                         </div>
                       )}
-                      <div className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 max-w-full">
-                        <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className="truncate">
-                          {[client.subDistrict, client.district].filter(Boolean).join(", ") || "No location specified"}
-                        </span>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {client.category && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
+                            <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            <span>{client.category}</span>
+                          </span>
+                        )}
+                        <div className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-full">
+                          <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span className="truncate">
+                            {[client.subDistrict, client.district].filter(Boolean).join(", ") || "No location specified"}
+                          </span>
+                        </div>
                       </div>
                     </td>
 
@@ -704,6 +727,22 @@ export function TargetedClientTable({
 
                           {/* Details Grid */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                            {/* Software Category */}
+                            <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+                                Software Category
+                              </span>
+                              <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                {client.category ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                    {client.category}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </div>
+                            </div>
+
                             {/* District & Sub-District */}
                             <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">

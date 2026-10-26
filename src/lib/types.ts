@@ -273,6 +273,14 @@ export const TARGETED_PRIORITY_COLOR: Record<TargetedPriority, string> = {
   Low: "bg-slate-700/40 text-slate-400 border-slate-600/40",
 };
 
+export interface TargetedCategory {
+  id: string;
+  name: string;
+  clientCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface TargetedClient {
   id: string;
   instituteName: string;
@@ -283,6 +291,7 @@ export interface TargetedClient {
   district: string | null;
   subDistrict: string | null;
   address: string | null;
+  category?: string | null;
   priority: TargetedPriority;
   isArchived: boolean;
   notes: string | null;

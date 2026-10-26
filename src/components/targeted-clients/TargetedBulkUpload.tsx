@@ -8,6 +8,7 @@ import { useUserSession } from "@/lib/userSession";
 const targetedTemplateHeaders = [
   "instituteName",
   "instituteNameBangla",
+  "category",
   "priority",
   "contactPerson",
   "phone",
@@ -37,6 +38,7 @@ export function TargetedBulkUpload({
       [
         "Dhaka Ideal Academy",
         "Dhaka Ideal Academy (Bengali Name)",
+        "Education Management",
         "High",
         "Mr. Headmaster",
         "01711000000",
