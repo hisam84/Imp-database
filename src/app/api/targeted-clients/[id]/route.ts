@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { extractNotesAndCalls, packNotesAndCalls } from "@/lib/callUpdatesStorage";
+import { ensureTargetedTables } from "@/lib/ensureTargetedTables";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -8,6 +9,7 @@ export const revalidate = 0;
 // GET /api/targeted-clients/[id]
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await ensureTargetedTables();
     const client = await prisma.targetedClient.findUnique({
       where: { id: params.id },
     });
@@ -29,6 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 // PUT /api/targeted-clients/[id]
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await ensureTargetedTables();
     const body = await req.json();
 
     const existing = await prisma.targetedClient.findUnique({

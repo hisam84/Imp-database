@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ensureTargetedTables } from "@/lib/ensureTargetedTables";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -7,6 +8,7 @@ export const revalidate = 0;
 // PUT /api/targeted-categories/[id] - Rename category & cascade to clients
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await ensureTargetedTables();
     const body = await req.json();
     const newName = body.name?.trim();
 
@@ -69,6 +71,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 // DELETE /api/targeted-categories/[id] - Prevent deletion if assigned to any client
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await ensureTargetedTables();
     const existing = await prisma.targetedCategory.findUnique({
       where: { id: params.id },
     });

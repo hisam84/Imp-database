@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ensureTargetedTables } from "@/lib/ensureTargetedTables";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -7,21 +8,33 @@ export const revalidate = 0;
 // GET /api/targeted-categories
 export async function GET() {
   try {
-    const categories = await prisma.targetedCategory.findMany({
-      orderBy: { name: "asc" },
-    });
+    await ensureTargetedTables();
+
+    let categories: any[] = [];
+    try {
+      categories = await prisma.targetedCategory.findMany({
+        orderBy: { name: "asc" },
+      });
+    } catch (catErr: any) {
+      console.warn("prisma.targetedCategory.findMany error:", catErr?.message);
+      categories = [];
+    }
 
     // Count clients for each category
-    const clients = await prisma.targetedClient.findMany({
-      where: { deletedAt: null },
-      select: { category: true },
-    });
-
     const countMap: Record<string, number> = {};
-    for (const c of clients) {
-      if (c.category) {
-        countMap[c.category] = (countMap[c.category] || 0) + 1;
+    try {
+      const clients = await prisma.targetedClient.findMany({
+        where: { deletedAt: null },
+        select: { category: true },
+      });
+
+      for (const c of clients) {
+        if (c.category) {
+          countMap[c.category] = (countMap[c.category] || 0) + 1;
+        }
       }
+    } catch (clientErr: any) {
+      console.warn("Failed to get client category counts:", clientErr?.message);
     }
 
     const result = categories.map((cat) => ({
@@ -42,6 +55,7 @@ export async function GET() {
 // POST /api/targeted-categories
 export async function POST(req: NextRequest) {
   try {
+    await ensureTargetedTables();
     const body = await req.json();
     const name = body.name?.trim();
 

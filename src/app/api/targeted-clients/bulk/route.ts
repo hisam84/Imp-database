@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ensureTargetedTables } from "@/lib/ensureTargetedTables";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureTargetedTables();
     const bodyData = await req.json();
     const items = Array.isArray(bodyData) ? bodyData : (Array.isArray(bodyData.clients) ? bodyData.clients : []);
     const defaultCreatedById = bodyData.createdById || null;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { extractNotesAndCalls } from "@/lib/callUpdatesStorage";
+import { ensureTargetedTables } from "@/lib/ensureTargetedTables";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -8,6 +9,8 @@ export const revalidate = 0;
 // GET /api/targeted-clients?search=&priority=&category=&district=&subDistrict=&status=
 export async function GET(req: NextRequest) {
   try {
+    await ensureTargetedTables();
+
     const params = req.nextUrl.searchParams;
     const search = params.get("search")?.trim();
     const priority = params.get("priority");
@@ -92,8 +95,20 @@ export async function GET(req: NextRequest) {
             orderBy: { createdAt: "desc" },
           });
         } catch (minErr: any) {
-          console.error("targetedClient.findMany minimal query failed:", minErr?.message);
-          clients = [];
+          console.error("targetedClient.findMany minimal query failed, attempting raw query fallback:", minErr?.message);
+          try {
+            const rawRows: any[] = await prisma.$queryRawUnsafe(
+              `SELECT * FROM TargetedClient ORDER BY createdAt DESC`
+            );
+            clients = (rawRows || []).map((r) => ({
+              ...r,
+              category: r.category || null,
+              isArchived: Boolean(r.isArchived),
+            }));
+          } catch (rawErr: any) {
+            console.error("targetedClient raw query failed:", rawErr?.message);
+            clients = [];
+          }
         }
       }
     }
@@ -135,6 +150,7 @@ export async function GET(req: NextRequest) {
 // POST /api/targeted-clients
 export async function POST(req: NextRequest) {
   try {
+    await ensureTargetedTables();
     const body = await req.json();
 
     if (!body.instituteName || typeof body.instituteName !== "string" || !body.instituteName.trim()) {
