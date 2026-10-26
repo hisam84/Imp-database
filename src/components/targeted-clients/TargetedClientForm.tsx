@@ -1,20 +1,23 @@
 "use client";
 import React, { useState } from "react";
-import { TargetedClient, TargetedPriority, TARGETED_PRIORITY_OPTIONS } from "@/lib/types";
+import { TargetedClient, TargetedPriority, TARGETED_PRIORITY_OPTIONS, TargetedCategory } from "@/lib/types";
 import { Button, Field, inputClass, Modal } from "@/components/ui";
 import { useUserSession } from "@/lib/userSession";
 
 interface Props {
   initial?: TargetedClient | null;
+  categories?: TargetedCategory[];
+  onManageCategories?: () => void;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function TargetedClientForm({ initial, onClose, onSaved }: Props) {
+export function TargetedClientForm({ initial, categories = [], onManageCategories, onClose, onSaved }: Props) {
   const { currentUser } = useUserSession();
   const [form, setForm] = useState({
     instituteName: initial?.instituteName ?? "",
     instituteNameBangla: initial?.instituteNameBangla ?? "",
+    category: initial?.category ?? "",
     contactPerson: initial?.contactPerson ?? "",
     phone: initial?.phone ?? "",
     email: initial?.email ?? "",
@@ -105,6 +108,33 @@ export function TargetedClientForm({ initial, onClose, onSaved }: Props) {
               onChange={(e) => update("instituteNameBangla", e.target.value)}
               className={`${inputClass} font-bengali`}
             />
+          </Field>
+
+          <Field label="Software Category">
+            <div className="flex gap-2">
+              <select
+                value={form.category}
+                onChange={(e) => update("category", e.target.value)}
+                className={inputClass}
+              >
+                <option value="">-- Select Category (Optional) --</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {onManageCategories && (
+                <button
+                  type="button"
+                  onClick={onManageCategories}
+                  title="Manage Software Categories"
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors whitespace-nowrap cursor-pointer shrink-0"
+                >
+                  + Manage
+                </button>
+              )}
+            </div>
           </Field>
 
           <Field label="Priority Level">

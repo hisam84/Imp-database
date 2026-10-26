@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
         district: item.district || item["District"] ? String(item.district || item["District"]).trim() : null,
         subDistrict: item.subDistrict || item["Sub District"] || item["Upazila"] ? String(item.subDistrict || item["Sub District"] || item["Upazila"]).trim() : null,
         address: item.address || item["Address"] ? String(item.address || item["Address"]).trim() : null,
+        category: item.category || item["Category"] || item["Software Category"] ? String(item.category || item["Category"] || item["Software Category"]).trim() : null,
         priority: priority,
         notes: item.notes || item["Notes"] || item["Remarks"] ? String(item.notes || item["Notes"] || item["Remarks"]).trim() : null,
         isArchived: false,
@@ -46,6 +47,21 @@ export async function POST(req: NextRequest) {
 
     if (recordsToCreate.length === 0) {
       return NextResponse.json({ error: "No valid client records found in uploaded file. Check 'instituteName' column." }, { status: 400 });
+    }
+
+    // Auto-register any new categories found in upload
+    const uniqueCategories = Array.from(new Set(recordsToCreate.map((r) => r.category).filter(Boolean))) as string[];
+    for (const catName of uniqueCategories) {
+      const exists = await prisma.targetedCategory.findFirst({
+        where: { name: { equals: catName } },
+      });
+      if (!exists) {
+        try {
+          await prisma.targetedCategory.create({ data: { name: catName } });
+        } catch {
+          // Ignore duplicate collision race condition
+        }
+      }
     }
 
     const created = await prisma.targetedClient.createMany({

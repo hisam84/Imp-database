@@ -5,12 +5,13 @@ import { extractNotesAndCalls } from "@/lib/callUpdatesStorage";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// GET /api/targeted-clients?search=&priority=&district=&subDistrict=&status=
+// GET /api/targeted-clients?search=&priority=&category=&district=&subDistrict=&status=
 export async function GET(req: NextRequest) {
   try {
     const params = req.nextUrl.searchParams;
     const search = params.get("search")?.trim();
     const priority = params.get("priority");
+    const category = params.get("category");
     const district = params.get("district");
     const subDistrict = params.get("subDistrict");
     const status = params.get("status"); // "active" | "archived" | "all"
@@ -28,12 +29,17 @@ export async function GET(req: NextRequest) {
           { district: { contains: search } },
           { subDistrict: { contains: search } },
           { address: { contains: search } },
+          { category: { contains: search } },
         ],
       });
     }
 
     if (priority && priority !== "all") {
       and.push({ priority });
+    }
+
+    if (category && category !== "all") {
+      and.push({ category: { equals: category } });
     }
 
     if (district) {
@@ -147,6 +153,7 @@ export async function POST(req: NextRequest) {
         district: body.district?.trim() || null,
         subDistrict: body.subDistrict?.trim() || null,
         address: body.address?.trim() || null,
+        category: body.category?.trim() || null,
         priority: priority,
         isArchived: Boolean(body.isArchived),
         notes: body.notes?.trim() || null,

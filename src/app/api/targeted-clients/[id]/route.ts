@@ -75,6 +75,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         address: body.address !== undefined
           ? (body.address?.trim() || null)
           : existing.address,
+        category: body.category !== undefined
+          ? (body.category?.trim() || null)
+          : existing.category,
         priority: priority,
         isArchived: body.isArchived !== undefined
           ? Boolean(body.isArchived)

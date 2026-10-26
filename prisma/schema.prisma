@@ -83,6 +83,7 @@ model TargetedClient {
   district            String?
   subDistrict         String?
   address             String?  @db.Text
+  category            String?
   priority            String   @default("Default") // "High" | "Default" | "Low"
   isArchived          Boolean   @default(false)
   notes               String?  @db.Text
@@ -91,11 +92,19 @@ model TargetedClient {
   updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?
 
+  @@index([category])
   @@index([priority])
   @@index([isArchived])
   @@index([district])
   @@index([subDistrict])
   @@index([deletedAt])
+}
+
+model TargetedCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Employee {

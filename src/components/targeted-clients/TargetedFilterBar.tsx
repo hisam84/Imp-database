@@ -1,8 +1,10 @@
 "use client";
 import { Button, inputClass } from "@/components/ui";
+import { TargetedCategory } from "@/lib/types";
 
 export interface TargetedFilters {
   search: string;
+  category: string;
   priority: string;
   district: string;
   subDistrict: string;
@@ -13,6 +15,7 @@ interface Props {
   filters: TargetedFilters;
   onChange: (f: TargetedFilters) => void;
   onReset: () => void;
+  categories: TargetedCategory[];
   districts: string[];
   subDistricts: string[];
 }
@@ -21,6 +24,7 @@ export function TargetedFilterBar({
   filters,
   onChange,
   onReset,
+  categories,
   districts,
   subDistricts,
 }: Props) {
@@ -30,6 +34,7 @@ export function TargetedFilterBar({
 
   const hasActiveFilters =
     filters.search ||
+    filters.category ||
     filters.priority ||
     filters.district ||
     filters.subDistrict ||
@@ -37,7 +42,7 @@ export function TargetedFilterBar({
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
-      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         <div>
           <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
             Search
@@ -49,6 +54,24 @@ export function TargetedFilterBar({
             onChange={(e) => update("search", e.target.value)}
             className={inputClass}
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Category
+          </label>
+          <select
+            value={filters.category}
+            onChange={(e) => update("category", e.target.value)}
+            className={inputClass}
+          >
+            <option value="">All Categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

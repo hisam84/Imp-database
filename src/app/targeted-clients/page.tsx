@@ -3,17 +3,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/SidebarLayout";
 import { TaskFormModal } from "@/components/tasks/TaskFormModal";
-import { CustomFieldDef, Institution, TargetedClient, CallUpdate } from "@/lib/types";
+import { CustomFieldDef, Institution, TargetedClient, CallUpdate, TargetedCategory } from "@/lib/types";
 import { TargetedFilterBar, TargetedFilters } from "@/components/targeted-clients/TargetedFilterBar";
 import { TargetedClientTable } from "@/components/targeted-clients/TargetedClientTable";
 import { TargetedClientForm } from "@/components/targeted-clients/TargetedClientForm";
 import { TargetedBulkUpload } from "@/components/targeted-clients/TargetedBulkUpload";
+import { TargetedCategoryModal } from "@/components/targeted-clients/TargetedCategoryModal";
 import { InstitutionForm } from "@/components/InstitutionForm";
 import { CustomFieldModal } from "@/components/CustomFieldModal";
 import { Button } from "@/components/ui";
 
 const emptyFilters: TargetedFilters = {
   search: "",
+  category: "",
   priority: "",
   district: "",
   subDistrict: "",
@@ -23,12 +25,14 @@ const emptyFilters: TargetedFilters = {
 export default function TargetedClientsPage() {
   const [clients, setClients] = useState<TargetedClient[]>([]);
   const [allClients, setAllClients] = useState<TargetedClient[]>([]);
+  const [categories, setCategories] = useState<TargetedCategory[]>([]);
   const [customFields, setCustomFields] = useState<CustomFieldDef[]>([]);
   const [filters, setFilters] = useState<TargetedFilters>(emptyFilters);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showFieldModal, setShowFieldModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editing, setEditing] = useState<TargetedClient | null>(null);
   const [convertingClient, setConvertingClient] = useState<TargetedClient | null>(null);
 
@@ -39,6 +43,18 @@ export default function TargetedClientsPage() {
   const [taskInstName, setTaskInstName] = useState("");
 
   const router = useRouter();
+
+  async function loadCategories() {
+    try {
+      const res = await fetch("/api/targeted-categories", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error("Failed to load targeted categories:", err);
+    }
+  }
 
   async function loadCustomFields() {
     try {
@@ -68,6 +84,7 @@ export default function TargetedClientsPage() {
     try {
       const params = new URLSearchParams();
       if (filters.search) params.set("search", filters.search);
+      if (filters.category) params.set("category", filters.category);
       if (filters.priority) params.set("priority", filters.priority);
       if (filters.district) params.set("district", filters.district);
       if (filters.subDistrict) params.set("subDistrict", filters.subDistrict);
@@ -93,6 +110,7 @@ export default function TargetedClientsPage() {
 
   useEffect(() => {
     loadAll();
+    loadCategories();
     loadCustomFields();
   }, []);
 
@@ -117,6 +135,7 @@ export default function TargetedClientsPage() {
     setEditing(null);
     setConvertingClient(null);
     loadAll();
+    loadCategories();
     loadFiltered();
   }
 
@@ -194,6 +213,9 @@ export default function TargetedClientsPage() {
 
   const pageActions = (
     <>
+      <Button variant="outline" onClick={() => setShowCategoryModal(true)}>
+        Manage Categories
+      </Button>
       <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
         Bulk Upload
       </Button>
@@ -233,6 +255,7 @@ export default function TargetedClientsPage() {
           filters={filters}
           onChange={setFilters}
           onReset={() => setFilters(emptyFilters)}
+          categories={categories}
           districts={districts}
           subDistricts={subDistricts}
         />
@@ -297,11 +320,24 @@ export default function TargetedClientsPage() {
       {showForm && (
         <TargetedClientForm
           initial={editing}
+          categories={categories}
+          onManageCategories={() => setShowCategoryModal(true)}
           onClose={() => {
             setShowForm(false);
             setEditing(null);
           }}
           onSaved={refreshData}
+        />
+      )}
+
+      {showCategoryModal && (
+        <TargetedCategoryModal
+          categories={categories}
+          onClose={() => setShowCategoryModal(false)}
+          onChanged={() => {
+            loadCategories();
+            loadFiltered();
+          }}
         />
       )}
 
