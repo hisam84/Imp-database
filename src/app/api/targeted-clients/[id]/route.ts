@@ -10,7 +10,7 @@ export const revalidate = 0;
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await ensureTargetedTables();
-    const client = await prisma.targetedClient.findUnique({
+    const client: any = await (prisma as any).targetedClient.findUnique({
       where: { id: params.id },
     });
 
@@ -34,7 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     await ensureTargetedTables();
     const body = await req.json();
 
-    const existing = await prisma.targetedClient.findUnique({
+    const existing: any = await (prisma as any).targetedClient.findUnique({
       where: { id: params.id },
     });
     if (!existing) {
