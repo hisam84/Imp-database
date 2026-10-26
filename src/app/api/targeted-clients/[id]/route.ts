@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       notesToSave = packNotesAndCalls(body.notes?.trim() || null, callUpdates);
     }
 
-    const updated = await prisma.targetedClient.update({
+    const updated = await (prisma as any).targetedClient.update({
       where: { id: params.id },
       data: {
         instituteName: typeof body.instituteName === "string" && body.instituteName.trim()

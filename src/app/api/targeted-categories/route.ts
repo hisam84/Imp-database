@@ -9,21 +9,22 @@ export const revalidate = 0;
 export async function GET() {
   try {
     await ensureTargetedTables();
+    const db = prisma as any;
 
     let categories: any[] = [];
     try {
-      categories = await prisma.targetedCategory.findMany({
+      categories = await db.targetedCategory.findMany({
         orderBy: { name: "asc" },
       });
     } catch (catErr: any) {
-      console.warn("prisma.targetedCategory.findMany error:", catErr?.message);
+      console.warn("db.targetedCategory.findMany error:", catErr?.message);
       categories = [];
     }
 
     // Count clients for each category
     const countMap: Record<string, number> = {};
     try {
-      const clients = await prisma.targetedClient.findMany({
+      const clients = await db.targetedClient.findMany({
         where: { deletedAt: null },
         select: { category: true },
       });
@@ -37,7 +38,7 @@ export async function GET() {
       console.warn("Failed to get client category counts:", clientErr?.message);
     }
 
-    const result = categories.map((cat) => ({
+    const result = categories.map((cat: any) => ({
       ...cat,
       clientCount: countMap[cat.name] || 0,
     }));
@@ -56,6 +57,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await ensureTargetedTables();
+    const db = prisma as any;
     const body = await req.json();
     const name = body.name?.trim();
 
@@ -67,7 +69,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check duplicate case-insensitively
-    const existing = await prisma.targetedCategory.findFirst({
+    const existing = await db.targetedCategory.findFirst({
       where: {
         name: { equals: name },
       },
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const created = await prisma.targetedCategory.create({
+    const created = await db.targetedCategory.create({
       data: { name },
     });
 

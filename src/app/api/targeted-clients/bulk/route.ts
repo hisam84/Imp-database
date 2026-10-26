@@ -53,13 +53,14 @@ export async function POST(req: NextRequest) {
 
     // Auto-register any new categories found in upload
     const uniqueCategories = Array.from(new Set(recordsToCreate.map((r) => r.category).filter(Boolean))) as string[];
+    const db = prisma as any;
     for (const catName of uniqueCategories) {
-      const exists = await prisma.targetedCategory.findFirst({
+      const exists = await db.targetedCategory.findFirst({
         where: { name: { equals: catName } },
       });
       if (!exists) {
         try {
-          await prisma.targetedCategory.create({ data: { name: catName } });
+          await db.targetedCategory.create({ data: { name: catName } });
         } catch {
           // Ignore duplicate collision race condition
         }

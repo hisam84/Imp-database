@@ -9,6 +9,7 @@ export const revalidate = 0;
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await ensureTargetedTables();
+    const db = prisma as any;
     const body = await req.json();
     const newName = body.name?.trim();
 
@@ -19,7 +20,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       );
     }
 
-    const existing = await prisma.targetedCategory.findUnique({
+    const existing = await db.targetedCategory.findUnique({
       where: { id: params.id },
     });
 
@@ -32,7 +33,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     // Check duplicate if name changed
     if (existing.name !== newName) {
-      const duplicate = await prisma.targetedCategory.findFirst({
+      const duplicate = await db.targetedCategory.findFirst({
         where: {
           name: { equals: newName },
           id: { not: params.id },
@@ -47,13 +48,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
 
       // Update clients with the old category name
-      await prisma.targetedClient.updateMany({
+      await db.targetedClient.updateMany({
         where: { category: existing.name },
         data: { category: newName },
       });
     }
 
-    const updated = await prisma.targetedCategory.update({
+    const updated = await db.targetedCategory.update({
       where: { id: params.id },
       data: { name: newName },
     });
@@ -72,7 +73,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await ensureTargetedTables();
-    const existing = await prisma.targetedCategory.findUnique({
+    const db = prisma as any;
+    const existing = await db.targetedCategory.findUnique({
       where: { id: params.id },
     });
 
@@ -84,7 +86,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
 
     // Check how many non-deleted clients have this category
-    const assignedCount = await prisma.targetedClient.count({
+    const assignedCount = await db.targetedClient.count({
       where: {
         category: existing.name,
         deletedAt: null,
@@ -100,7 +102,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       );
     }
 
-    await prisma.targetedCategory.delete({
+    await db.targetedCategory.delete({
       where: { id: params.id },
     });
 

@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     const priority = ["High", "Default", "Low"].includes(body.priority) ? body.priority : "Default";
 
-    const created = await prisma.targetedClient.create({
+    const created = await (prisma as any).targetedClient.create({
       data: {
         instituteName: body.instituteName.trim(),
         instituteNameBangla: body.instituteNameBangla?.trim() || null,
