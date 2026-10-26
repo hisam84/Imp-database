@@ -93,7 +93,12 @@ export default function TargetedClientsPage() {
       const res = await fetch(`/api/targeted-clients?${params.toString()}`, { cache: "no-store" });
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
-        setClients(data);
+        let list = data;
+        if (filters.category && filters.category !== "all") {
+          const cat = filters.category.trim().toLowerCase();
+          list = list.filter((c) => (c.category || "").trim().toLowerCase() === cat);
+        }
+        setClients(list);
       } else {
         console.warn("Targeted clients fetch returned error or non-array:", data);
         setErrorMsg(data?.error || "Failed to load targeted clients.");

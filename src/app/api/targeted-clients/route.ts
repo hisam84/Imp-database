@@ -56,13 +56,7 @@ export async function GET(req: NextRequest) {
     if (status === "archived") {
       and.push({ isArchived: true });
     } else if (status === "active" || !status) {
-      // Matches both false and null (ensures legacy/unmigrated records show)
-      and.push({
-        OR: [
-          { isArchived: false },
-          { isArchived: null },
-        ],
-      });
+      and.push({ isArchived: false });
     }
     // if status === "all", don't filter by isArchived
 
@@ -80,7 +74,7 @@ export async function GET(req: NextRequest) {
     } catch (primaryErr: any) {
       console.warn("targetedClient.findMany with AND where failed, trying without deletedAt filter:", primaryErr?.message);
       try {
-        const fallbackAnd = and.filter((item) => !item.deletedAt);
+        const fallbackAnd = and.filter((item) => !Object.prototype.hasOwnProperty.call(item, "deletedAt"));
         clients = await prisma.targetedClient.findMany({
           where: fallbackAnd.length > 0 ? { AND: fallbackAnd } : {},
           orderBy: [
@@ -111,6 +105,40 @@ export async function GET(req: NextRequest) {
           }
         }
       }
+    }
+
+    // In-memory verification to guarantee 100% accurate filtering
+    if (category && category !== "all") {
+      const catTrimmed = category.trim().toLowerCase();
+      clients = clients.filter((c: any) => (c.category || "").trim().toLowerCase() === catTrimmed);
+    }
+    if (priority && priority !== "all") {
+      clients = clients.filter((c: any) => c.priority === priority);
+    }
+    if (district && district !== "all") {
+      clients = clients.filter((c: any) => c.district === district);
+    }
+    if (subDistrict && subDistrict !== "all") {
+      clients = clients.filter((c: any) => c.subDistrict === subDistrict);
+    }
+    if (status === "archived") {
+      clients = clients.filter((c: any) => Boolean(c.isArchived));
+    } else if (status === "active" || !status) {
+      clients = clients.filter((c: any) => !c.isArchived);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      clients = clients.filter((c: any) =>
+        (c.instituteName && c.instituteName.toLowerCase().includes(q)) ||
+        (c.instituteNameBangla && c.instituteNameBangla.includes(q)) ||
+        (c.contactPerson && c.contactPerson.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.includes(q)) ||
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        (c.district && c.district.toLowerCase().includes(q)) ||
+        (c.subDistrict && c.subDistrict.toLowerCase().includes(q)) ||
+        (c.address && c.address.toLowerCase().includes(q)) ||
+        (c.category && c.category.toLowerCase().includes(q))
+      );
     }
 
     const PRIORITY_ORDER: Record<string, number> = {

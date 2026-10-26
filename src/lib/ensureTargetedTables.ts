@@ -76,6 +76,12 @@ export async function ensureTargetedTables() {
   try {
     await prisma.$executeRawUnsafe(`ALTER TABLE "TargetedClient" ADD COLUMN IF NOT EXISTS "isArchived" BOOLEAN NOT NULL DEFAULT false;`);
   } catch {}
+  try {
+    await prisma.$executeRawUnsafe(`UPDATE \`TargetedClient\` SET \`isArchived\` = false WHERE \`isArchived\` IS NULL;`);
+  } catch {}
+  try {
+    await prisma.$executeRawUnsafe(`UPDATE "TargetedClient" SET "isArchived" = false WHERE "isArchived" IS NULL;`);
+  } catch {}
 
   try {
     await prisma.$executeRawUnsafe(`ALTER TABLE \`TargetedClient\` ADD COLUMN \`deletedAt\` DATETIME(3) NULL;`);
