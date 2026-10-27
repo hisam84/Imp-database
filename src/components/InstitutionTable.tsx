@@ -189,6 +189,7 @@ function ActionMenu({
   onToggleDeactivate,
   onCallUpdate,
   onViewLogs,
+  onTrigger,
 }: {
   inst: Institution;
   onEdit: (i: Institution) => void;
@@ -197,6 +198,7 @@ function ActionMenu({
   onToggleDeactivate?: (i: Institution) => void;
   onCallUpdate?: (i: Institution) => void;
   onViewLogs?: (i: Institution) => void;
+  onTrigger?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuCoords, setMenuCoords] = useState<{ top: number; right: number; placeAbove: boolean }>({
@@ -212,6 +214,7 @@ function ActionMenu({
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
+    onTrigger?.();
     if (!isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       const menuHeight = 220;
@@ -468,6 +471,38 @@ export function InstitutionTable({
   const [selectedCallInst, setSelectedCallInst] = useState<Institution | null>(null);
   const [selectedLogsInst, setSelectedLogsInst] = useState<Institution | null>(null);
   const [commLogsOverrides, setCommLogsOverrides] = useState<Record<string, CommunicationLog[]>>({});
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handleDocumentClick(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // If clicked inside any modal, dropdown portal, or fixed overlay, keep activeRowId
+      if (
+        target.closest("[role='dialog']") ||
+        target.closest(".fixed") ||
+        target.closest("#modal-root") ||
+        (target.id && target.id.startsWith("action-menu-portal")) ||
+        target.closest("[id^='action-menu-portal']")
+      ) {
+        return;
+      }
+
+      // If clicked inside an institution row or card, that element's own click handler handles it
+      if (target.closest("[data-inst-id]")) {
+        return;
+      }
+
+      // If clicked anywhere else, clear the active highlight
+      setActiveRowId(null);
+    }
+
+    document.addEventListener("mousedown", handleDocumentClick);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentClick);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -544,6 +579,7 @@ export function InstitutionTable({
           const isDeactivated = Boolean(inst.customFields?.isDeactivated);
           const status = computeStatus(inst.expireDate, inst.actualExpireDate, 60, isDeactivated);
           const isOpen = expanded === inst.id;
+          const isActive = activeRowId === inst.id;
           const domainUrl = getDomainUrl(inst.domain);
           const serialNumber = startIndex + index + 1;
           const callCount = getCallCount(inst);
@@ -552,20 +588,32 @@ export function InstitutionTable({
           return (
             <div
               key={inst.id}
+              data-inst-id={inst.id}
               className={`rounded-xl border transition-all overflow-hidden ${
-                isDeactivated
+                isActive
+                  ? "!border-blue-500/50 dark:!border-blue-500/50 ring-2 ring-blue-500/30 !bg-blue-50/50 dark:!bg-blue-950/40"
+                  : isDeactivated
                   ? "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40"
                   : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs"
               } ${isOpen ? "ring-2 ring-blue-500/20 border-blue-500/40 dark:border-blue-500/40" : ""}`}
             >
               {/* Main Card Header (Tappable Row) */}
               <div
-                onClick={() => setExpanded(isOpen ? null : inst.id)}
-                className="p-3.5 flex items-start gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-850/60 transition-colors"
+                onClick={() => {
+                  setActiveRowId(inst.id);
+                  setExpanded(isOpen ? null : inst.id);
+                }}
+                className={`p-3.5 flex items-start gap-3 cursor-pointer transition-colors ${
+                  isActive
+                    ? "bg-blue-50/60 dark:bg-blue-950/40"
+                    : "hover:bg-slate-50 dark:hover:bg-slate-850/60"
+                }`}
               >
                 {/* Serial Number & Chevron */}
                 <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-                  <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 min-w-[18px] text-center">
+                  <span className={`text-xs font-mono min-w-[18px] text-center ${
+                    isActive ? "font-bold text-blue-600 dark:text-blue-400" : "font-bold text-slate-400 dark:text-slate-500"
+                  }`}>
                     {serialNumber}
                   </span>
                   <span
@@ -610,6 +658,7 @@ export function InstitutionTable({
                             onToggleDeactivate={onToggleDeactivate}
                             onCallUpdate={(i) => setSelectedCallInst(i)}
                             onViewLogs={(i) => setSelectedLogsInst(i)}
+                            onTrigger={() => setActiveRowId(inst.id)}
                           />
                         </div>
                       </div>
@@ -627,6 +676,7 @@ export function InstitutionTable({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setActiveRowId(inst.id);
                         setSelectedCallInst(inst);
                       }}
                       className="relative flex-1 py-2 px-2.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
@@ -646,6 +696,7 @@ export function InstitutionTable({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setActiveRowId(inst.id);
                         setSelectedLogsInst(inst);
                       }}
                       className="relative flex-1 py-2 px-2.5 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
@@ -666,6 +717,7 @@ export function InstitutionTable({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setActiveRowId(inst.id);
                           onAddTask(inst);
                         }}
                         className="flex-1 py-2 px-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
@@ -681,6 +733,7 @@ export function InstitutionTable({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setActiveRowId(inst.id);
                         onEdit(inst);
                       }}
                       className="py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-300 hover:text-blue-600 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
@@ -721,6 +774,10 @@ export function InstitutionTable({
                             href={domainUrl}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveRowId(inst.id);
+                            }}
                             className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-sans text-xs break-all font-medium"
                           >
                             <span>{inst.domain}</span>
@@ -819,6 +876,7 @@ export function InstitutionTable({
               const isDeactivated = Boolean(inst.customFields?.isDeactivated);
               const status = computeStatus(inst.expireDate, inst.actualExpireDate, 60, isDeactivated);
               const isOpen = expanded === inst.id;
+              const isActive = activeRowId === inst.id;
               const domainUrl = getDomainUrl(inst.domain);
               const serialNumber = startIndex + index + 1;
               const callCount = getCallCount(inst);
@@ -827,14 +885,24 @@ export function InstitutionTable({
               return (
                 <Fragment key={inst.id}>
                   <tr
-                    className={`cursor-pointer border-b border-slate-200 dark:border-slate-800/70 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 ${
-                      isDeactivated ? "opacity-75 bg-slate-50/40 dark:bg-slate-900/40" : ""
-                    } ${
-                      isOpen ? "bg-slate-50 dark:bg-slate-900/60" : ""
+                    data-inst-id={inst.id}
+                    className={`cursor-pointer border-b border-slate-200 dark:border-slate-800/70 transition-colors ${
+                      isActive
+                        ? "!bg-blue-50/80 dark:!bg-blue-950/50 shadow-xs ring-1 ring-inset ring-blue-500/25"
+                        : isOpen
+                        ? "bg-slate-50 dark:bg-slate-900/60"
+                        : isDeactivated
+                        ? "opacity-75 bg-slate-50/40 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/60"
                     }`}
-                    onClick={() => setExpanded(isOpen ? null : inst.id)}
+                    onClick={() => {
+                      setActiveRowId(inst.id);
+                      setExpanded(isOpen ? null : inst.id);
+                    }}
                   >
-                    <td className="w-12 px-3 py-3 text-center text-xs font-mono text-slate-500 dark:text-slate-400 font-medium">
+                    <td className={`w-12 px-3 py-3 text-center text-xs font-mono font-medium ${
+                      isActive ? "font-bold text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"
+                    }`}>
                       {serialNumber}
                     </td>
                     <td className="w-8 px-2 py-3 text-center text-slate-400 dark:text-slate-500">
@@ -870,7 +938,10 @@ export function InstitutionTable({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-medium font-sans max-w-full"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveRowId(inst.id);
+                            }}
                           >
                             <span className="truncate">{inst.domain}</span>
                             <svg className="w-3 h-3 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -893,6 +964,7 @@ export function InstitutionTable({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            setActiveRowId(inst.id);
                             setSelectedCallInst(inst);
                           }}
                           className={`relative inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
@@ -927,6 +999,7 @@ export function InstitutionTable({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            setActiveRowId(inst.id);
                             setSelectedLogsInst(inst);
                           }}
                           className={`relative inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs border cursor-pointer ${
@@ -967,11 +1040,18 @@ export function InstitutionTable({
                         onToggleDeactivate={onToggleDeactivate}
                         onCallUpdate={(i) => setSelectedCallInst(i)}
                         onViewLogs={(i) => setSelectedLogsInst(i)}
+                        onTrigger={() => setActiveRowId(inst.id)}
                       />
                     </td>
                   </tr>
                   {isOpen && (
-                    <tr className="border-b border-slate-200 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-950/60">
+                    <tr
+                      data-inst-id={inst.id}
+                      onClick={() => setActiveRowId(inst.id)}
+                      className={`border-b border-slate-200 dark:border-slate-800/70 transition-colors ${
+                        isActive ? "bg-blue-50/40 dark:bg-blue-950/30" : "bg-slate-50/70 dark:bg-slate-950/60"
+                      }`}
+                    >
                       <td colSpan={9} className="px-6 py-5">
                         {/* Detailed Fields Grid for Desktop */}
                         <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
