@@ -77,8 +77,8 @@ function InstitutionsLedgerContent() {
     }
   }
 
-  async function loadFiltered() {
-    setLoading(true);
+  async function loadFiltered(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (filters.search) params.set("search", filters.search);
@@ -93,7 +93,7 @@ function InstitutionsLedgerContent() {
     } catch {
       setInstitutions([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -142,7 +142,7 @@ function InstitutionsLedgerContent() {
     setShowForm(false);
     setEditing(null);
     loadAll();
-    loadFiltered();
+    loadFiltered(true);
   }
 
   async function handleDelete(inst: Institution) {
@@ -226,16 +226,14 @@ function InstitutionsLedgerContent() {
     );
   }
 
-  // Real-time synchronization when tab gets focus or when background alert scan completes
+  // Real-time synchronization when background alert scan completes (focus listener removed to prevent unwanted reloads when returning from other tabs)
   useEffect(() => {
     function handleSync() {
       loadAll();
-      loadFiltered();
+      loadFiltered(true);
     }
-    window.addEventListener("focus", handleSync);
     window.addEventListener("institution-logs-updated", handleSync);
     return () => {
-      window.removeEventListener("focus", handleSync);
       window.removeEventListener("institution-logs-updated", handleSync);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -302,26 +300,28 @@ function InstitutionsLedgerContent() {
         />
       </div>
 
-      {loading ? (
+      {loading && institutions.length === 0 ? (
         <div className="py-16 text-center text-slate-500">Loading…</div>
       ) : (
-        <InstitutionTable
-          institutions={institutions}
-          customFieldDefs={customFields}
-          onEdit={(inst) => {
-            setEditing(inst);
-            setShowForm(true);
-          }}
-          onDelete={handleDelete}
-          onToggleDeactivate={handleToggleDeactivate}
-          onAddTask={(inst) => {
-            setTaskInstId(inst.id);
-            setTaskInstName(inst.instituteName);
-            setShowTaskModal(true);
-          }}
-          onCallUpdateAdded={handleCallUpdateAdded}
-          onCommunicationLogsUpdated={handleCommunicationLogsUpdated}
-        />
+        <div className={loading ? "opacity-60 pointer-events-none transition-opacity" : "transition-opacity"}>
+          <InstitutionTable
+            institutions={institutions}
+            customFieldDefs={customFields}
+            onEdit={(inst) => {
+              setEditing(inst);
+              setShowForm(true);
+            }}
+            onDelete={handleDelete}
+            onToggleDeactivate={handleToggleDeactivate}
+            onAddTask={(inst) => {
+              setTaskInstId(inst.id);
+              setTaskInstName(inst.instituteName);
+              setShowTaskModal(true);
+            }}
+            onCallUpdateAdded={handleCallUpdateAdded}
+            onCommunicationLogsUpdated={handleCommunicationLogsUpdated}
+          />
+        </div>
       )}
 
       {showForm && (

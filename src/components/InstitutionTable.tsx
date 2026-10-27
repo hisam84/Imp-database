@@ -450,11 +450,36 @@ export function InstitutionTable({
   onCommunicationLogsUpdated?: (instId: string, updatedLogs: CommunicationLog[]) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [pageSize, setPageSize] = useState<number | "all">(25);
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number | "all">(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("inst_ledger_pageSize");
+      if (saved === "all") return "all";
+      if (saved && !isNaN(Number(saved))) return Number(saved);
+    }
+    return 25;
+  });
+  const [currentPage, setCurrentPage] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("inst_ledger_page");
+      if (saved && !isNaN(Number(saved))) return Math.max(1, Number(saved));
+    }
+    return 1;
+  });
   const [selectedCallInst, setSelectedCallInst] = useState<Institution | null>(null);
   const [selectedLogsInst, setSelectedLogsInst] = useState<Institution | null>(null);
   const [commLogsOverrides, setCommLogsOverrides] = useState<Record<string, CommunicationLog[]>>({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("inst_ledger_page", String(currentPage));
+    }
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("inst_ledger_pageSize", String(pageSize));
+    }
+  }, [pageSize]);
 
   const totalCount = institutions.length;
   const effectivePageSize = pageSize === "all" ? (totalCount || 1) : pageSize;
@@ -462,8 +487,8 @@ export function InstitutionTable({
 
   // Auto-clamp current page if total pages decreases
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(1);
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
     }
   }, [totalPages, currentPage]);
 
